@@ -1,0 +1,52 @@
+<body>
+   <link rel="stylesheet" href="css/style.css">
+  <div class="dashboard-wrapper">
+
+    <header class="dashboard-header">
+      <h1>Dashboard Member</h1>
+      <p>Selamat datang di Sistem Perpustakaan</p>
+    </header>
+
+    <div class="dashboard-cards">
+
+      <div class="dashboard-card" onclick="location.href='books.html'">
+        <span class="icon">📚</span>
+        <h3>Cari Buku</h3>
+        <p>Mencari dan melihat katalog buku</p>
+      </div>
+
+      <div class="dashboard-card" onclick="location.href='borrow.html'">
+        <span class="icon">📝</span>
+        <h3>Ajukan Peminjaman</h3>
+        <p>Form pengajuan peminjaman buku</p>
+      </div>
+
+      <div class="dashboard-card" onclick="location.href='transactions.html'">
+        <span class="icon">📖</span>
+        <h3>Riwayat Peminjaman</h3>
+        <p>Melihat status dan histori peminjaman</p>
+      </div>
+
+      <div class="dashboard-card" onclick="location.href='return.html'">
+        <span class="icon">🔄</span>
+        <h3>Pengembalian Buku</h3>
+        <p>Ajukan pengembalian buku</p>
+      </div>
+
+      <div class="dashboard-card" onclick="location.href='fine.html'">
+        <span class="icon">💰</span>
+        <h3>Denda</h3>
+        <p>Melihat dan membayar denda</p>
+      </div>
+
+      <div class="dashboard-card logout" onclick="logout()">
+        <span class="icon">🚪</span>
+        <h3>Logout</h3>
+        <p>Keluar dari sistem</p>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+</body>

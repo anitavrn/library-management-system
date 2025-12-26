@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Daftar Buku</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+  <div class="page-wrapper">
+    <div class="card-container">
+      <h2 class="page-title">Daftar Buku</h2>
+
+      <!-- SEARCH -->
+      <input
+        type="text"
+        id="searchInput"
+        placeholder="Cari buku..."
+        class="search-input"
+      >
+
+      <!-- DROPDOWN JUMLAH DATA -->
+      <div style="margin: 10px 0; display: flex; gap: 10px; align-items: center;">
+        <label for="limitSelect">Tampilkan:</label>
+        <select id="limitSelect">
+          <option value="25">25</option>
+          <option value="50" selected>50</option>
+          <option value="100">100</option>
+          <option value="150">150</option>
+        </select>
+      </div>
+
+      <!-- TABLE -->
+      <table class="book-table">
+        <thead>
+          <tr>
+            <th>Judul</th>
+            <th>Penulis</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="bookList">
+          <tr>
+            <td colspan="3" style="text-align:center;">Memuat data...</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <button class="btn-back" onclick="window.location.href='dashboard.html'">
+        ← Kembali
+      </button>
+    </div>
+  </div>
+
+  <!-- API LARAVEL (UNTUK PINJAM) -->
+  <script src="js/api.js"></script>
+
+  <script>
+    console.log("BOOKS PAGE - OPEN LIBRARY");
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("Silakan login terlebih dahulu");
+      window.location.href = "login.html";
+    }
+
+    const tbody = document.getElementById("bookList");
+    const searchInput = document.getElementById("searchInput");
+    const limitSelect = document.getElementById("limitSelect");
+
+    let currentQuery = "programming";
+
+    // =========================
+    // LOAD BUKU DARI OPEN LIBRARY
+    // =========================
+    function loadBooks(query = currentQuery) {
+      currentQuery = query;
+      const limit = parseInt(limitSelect.value);
+
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="3" style="text-align:center;">Memuat data...</td>
+        </tr>
+      `;
+
+      fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(query)}`)
+        .then(res => res.json())
+        .then(data => {
+          const books = data.docs.slice(0, limit);
+          tbody.innerHTML = "";
+
+          if (books.length === 0) {
+            tbody.innerHTML = `
+              <tr>
+                <td colspan="3" style="text-align:center;">
+                  Buku tidak ditemukan
+                </td>
+              </tr>
+            `;
+            return;
+          }
+
+          books.forEach(book => {
+            tbody.innerHTML += `
+              <tr>
+                <td>${book.title}</td>
+                <td>${book.author_name?.[0] ?? "-"}</td>
+                <td>
+                  <button onclick="pinjamBuku('${book.key}', '${book.title.replace(/'/g, "\\'")}')">
+                    Pinjam
+                  </button>
+                </td>
+              </tr>
+            `;
+          });
+        })
+        .catch(err => {
+          console.error(err);
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="3" style="text-align:center;">
+                Gagal memuat data buku
+              </td>
+            </tr>
+          `;
+        });
+    }
+
+    // =========================
+    // PINJAM BUKU (LARAVEL API)
+    // =========================
+    function pinjamBuku(bookKey, title) {
+      fetch(API_URL + "/transactions", {
+        method: "POST",
+        headers: {
+          "Authorization": "Bearer " + token,
+          "Accept": "application/json",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          book_key: bookKey,
+          title: title
+        })
+      })
+      .then(res => res.json())
+      .then(() => {
+        alert("Buku berhasil dipinjam");
+      })
+      .catch(err => {
+        console.error(err);
+        alert("Gagal meminjam buku");
+      });
+    }
+
+    // =========================
+    // SEARCH (MIN 3 KARAKTER)
+    // =========================
+    searchInput.addEventListener("keyup", function () {
+      const keyword = this.value.trim();
+      if (keyword.length >= 3) {
+        loadBooks(keyword);
+      }
+    });
+
+    // =========================
+    // DROPDOWN JUMLAH DATA
+    // =========================
+    limitSelect.addEventListener("change", function () {
+      loadBooks(currentQuery);
+    });
+
+    // LOAD AWAL
+    loadBooks();
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Riwayat Peminjaman</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="card">
+  <h2>Riwayat Peminjaman</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Buku</th>
+        <th>Tgl Pinjam</th>
+        <th>Tgl Kembali</th>
+        <th>Denda</th>
+      </tr>
+    </thead>
+    <tbody id="transaction-list"></tbody>
+  </table>
+
+  <button onclick="location.href='dashboard.html'">⬅ Kembali</button>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+  loadTransactions();
+</script>
+</body>
+</html>

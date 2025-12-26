@@ -1,0 +1,208 @@
+/* background halaman */
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: linear-gradient(135deg, #ffd1e8, #e0f0ff);
+  height: 100vh;
+}
+
+/* wrapper center */
+.login-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+/* card login */
+.login-card {
+  background: #ffffff;
+  padding: 30px;
+  width: 350px;
+  border-radius: 16px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+  text-align: center;
+}
+
+/* judul */
+.login-card h2 {
+  margin-bottom: 20px;
+  color: #ff6fae;
+}
+
+/* input */
+.login-card input {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 14px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+}
+
+/* tombol */
+.login-card button {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 25px;
+  background: linear-gradient(to right, #ff8acb, #8ecbff);
+  color: white;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.login-card button:hover {
+  opacity: 0.9;
+}
+
+.dashboard-wrapper {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #ffd1e8, #e0f0ff);
+  padding: 40px;
+}
+
+.dashboard-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.dashboard-header h1 {
+  color: #ff6fae;
+  font-size: 28px;
+}
+
+.dashboard-header p {
+  color: #555;
+}
+
+.dashboard-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 25px;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.dashboard-card {
+  background: white;
+  padding: 25px;
+  border-radius: 16px;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+  text-align: center;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.dashboard-card:hover {
+  transform: translateY(-6px);
+}
+
+.dashboard-card .icon {
+  font-size: 40px;
+  margin-bottom: 15px;
+}
+
+.dashboard-card h3 {
+  margin-bottom: 8px;
+  color: #333;
+}
+
+.dashboard-card p {
+  font-size: 14px;
+  color: #666;
+}
+
+.dashboard-card.logout {
+  background: linear-gradient(to right, #ff8acb, #ff6f91);
+  color: white;
+}
+
+.dashboard-card.logout h3,
+.dashboard-card.logout p {
+  color: white;
+}
+
+/* halaman wrapper */
+.page-wrapper {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #ffd1e8, #e0f0ff);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 40px;
+}
+
+/* card utama */
+.card-container {
+  background: #ffffff;
+  width: 100%;
+  max-width: 900px;
+  padding: 30px;
+  border-radius: 16px;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+}
+
+/* judul */
+.page-title {
+  text-align: center;
+  margin-bottom: 20px;
+  color: #ff6fae;
+}
+
+/* search */
+.search-input {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 20px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+}
+
+/* tabel */
+.book-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 25px;
+}
+
+.book-table th {
+  background: #ffb6d9;
+  color: #333;
+  padding: 12px;
+  text-align: left;
+}
+
+.book-table td {
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+}
+
+.book-table tr:hover {
+  background: #fff0f7;
+}
+
+/* tombol aksi */
+.book-table button {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  background: linear-gradient(to right, #ff8acb, #8ecbff);
+  color: white;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+/* tombol kembali */
+.btn-back {
+  padding: 10px 18px;
+  border: none;
+  border-radius: 20px;
+  background: #ddd;
+  cursor: pointer;
+}
+
+.btn-back:hover {
+  background: #ccc;
+}
