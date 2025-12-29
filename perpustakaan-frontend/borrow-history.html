@@ -38,39 +38,96 @@
 </div>
 
 <script>
-/* ================= AUTH CHECK ================= */
-const currentUser = JSON.parse(localStorage.getItem("currentUser"));
-if (!currentUser) {
+/* =========================
+   CONFIG
+========================= */
+const API_URL = "http://127.0.0.1:8000/api";
+const TOKEN_KEY = "token";          // token member
+const USER_KEY  = "currentUser";    // user member
+
+/* =========================
+   AUTH CHECK
+========================= */
+const token = localStorage.getItem(TOKEN_KEY);
+const currentUser = localStorage.getItem(USER_KEY);
+
+if (!token || !currentUser) {
   window.location.href = "login.html";
 }
 
-/* ================= LOAD DATA PER USER ================= */
-const key = `borrowHistory_${currentUser.email}`;
-const history = JSON.parse(localStorage.getItem(key)) || [];
+/* =========================
+   STATUS LABEL
+========================= */
+function statusLabel(status) {
+  switch (status) {
+    case "pending": return "Menunggu Konfirmasi";
+    case "borrowed": return "Dipinjam";
+    case "return_pending": return "Menunggu Verifikasi";
+    case "returned": return "Selesai";
+    default: return status || "-";
+  }
+}
 
+function fmtDate(dt){
+  if (!dt) return "-";
+  // dt biasanya "2025-12-28T..." -> ambil yyyy-mm-dd
+  return String(dt).substring(0, 10);
+}
+
+/* =========================
+   LOAD HISTORY (BACKEND)
+========================= */
 const historyBody = document.getElementById("historyBody");
-historyBody.innerHTML = "";
 
-if (history.length === 0) {
-  historyBody.innerHTML = `
-    <tr>
-      <td colspan="4" style="text-align:center">
-        Belum ada riwayat peminjaman
-      </td>
-    </tr>
-  `;
-} else {
-  history.forEach(item => {
-    historyBody.innerHTML += `
+fetch(`${API_URL}/transactions/my`, {
+  headers: {
+    "Accept": "application/json",
+    "Authorization": "Bearer " + token
+  }
+})
+.then(async res => {
+  const data = await res.json();
+  return { status: res.status, data };
+})
+.then(({ status, data }) => {
+  if (status !== 200) {
+    historyBody.innerHTML = `
+      <tr><td colspan="4" style="text-align:center">
+        Gagal memuat riwayat: ${data.message || "Error"}
+      </td></tr>
+    `;
+    return;
+  }
+
+  const list = data.data || [];
+
+  if (list.length === 0) {
+    historyBody.innerHTML = `
       <tr>
-        <td>${item.title}</td>
-        <td>${item.borrowDate}</td>
-        <td>${item.returnDate}</td>
-        <td>${item.status}</td>
+        <td colspan="4" style="text-align:center">
+          Belum ada riwayat peminjaman
+        </td>
       </tr>
     `;
-  });
-}
+    return;
+  }
+
+  historyBody.innerHTML = list.map(trx => `
+    <tr>
+      <td>${trx.book?.title || "-"}</td>
+      <td>${fmtDate(trx.borrow_date)}</td>
+      <td>${fmtDate(trx.return_date)}</td>
+      <td>${statusLabel(trx.status)}</td>
+    </tr>
+  `).join("");
+})
+.catch(() => {
+  historyBody.innerHTML = `
+    <tr><td colspan="4" style="text-align:center">
+      Tidak bisa terhubung ke backend.
+    </td></tr>
+  `;
+});
 </script>
 
 </body>

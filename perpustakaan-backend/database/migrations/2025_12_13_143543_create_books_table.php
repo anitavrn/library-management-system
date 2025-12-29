@@ -13,11 +13,17 @@ return new class extends Migration
     {
         Schema::create('books', function (Blueprint $table) {
             $table->id();
+
+            // id dari API (misal google books id / openlibrary key)
+            $table->string('api_book_id')->nullable()->unique();
             $table->string('title');
-            $table->string('author');
-            $table->string('publisher');
-            $table->integer('year');
-            $table->integer('stock');
+            $table->string('author')->nullable();
+            $table->string('publisher')->nullable();
+            $table->integer('year')->nullable();
+
+            // inventaris internal
+            $table->integer('stock')->default(0);
+            $table->string('location')->nullable(); // rak / lokasi;
             $table->timestamps();
         });
     }

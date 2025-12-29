@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <title>Detail Buku</title>
   <link rel="stylesheet" href="css/style.css">
+
+  <!-- SweetAlert -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
 
@@ -30,7 +33,7 @@
       </div>
       <div class="info-box">
         <span>Denda / Hari</span>
-        <strong>Rp 1.000</strong>
+        <strong id="finePerDayText">Rp 1.000</strong>
       </div>
     </div>
 
@@ -42,50 +45,159 @@
 
     <!-- BUTTON -->
     <div class="action-row">
-      <button class="btn-back" onclick="history.back()">← Kembali</button>
-      <button class="btn-borrow" onclick="pinjam()">📚 Pinjam</button>
+      <button class="btn-back" id="btnBack">← Kembali</button>
+      <button class="btn-borrow" id="btnBorrow" onclick="pinjam()">📚 Pinjam</button>
     </div>
 
   </div>
 </div>
 
 <script>
-const params = new URLSearchParams(window.location.search);
-const workId = params.get("id");
-const authorParam = params.get("author");
+/* =========================
+   CONFIG
+========================= */
+const API_URL = "http://127.0.0.1:8000/api";
+const MEMBER_TOKEN_KEY = "token"; // token member
 
-// TAMPILKAN AUTHOR DARI URL (INI YANG PENTING)
+/* =========================
+   GET PARAMS
+========================= */
+const params = new URLSearchParams(window.location.search);
+const workId = params.get("id");              // contoh: OL505944W ==> api_book_id
+const authorParam = params.get("author");
+const isAdminView = params.get("role") === "admin"; // ✅ MODE ADMIN DARI URL
+
+/* =========================
+   MODE ADMIN (HIDE PINJAM + BACK KE ADMIN)
+========================= */
+const btnBack = document.getElementById("btnBack");
+const btnBorrow = document.getElementById("btnBorrow");
+
+if (isAdminView) {
+  // sembunyikan pinjam untuk admin
+  btnBorrow.style.display = "none";
+
+  // tombol kembali diarahkan ke dashboard admin
+  btnBack.onclick = () => window.location.href = "admin-dashboard.html";
+} else {
+  // default: kembali seperti biasa
+  btnBack.onclick = () => history.back();
+}
+
+/* =========================
+   VALIDASI ID
+========================= */
+if (!workId) {
+  document.getElementById("title").innerText = "ID buku tidak ditemukan";
+}
+
+/* =========================
+   SET AUTHOR DARI URL
+========================= */
 document.getElementById("author").innerText =
   authorParam ? decodeURIComponent(authorParam) : "-";
 
 let bookData = {};
 
-// FETCH DETAIL BUKU
-fetch(`https://openlibrary.org/works/${workId}.json`)
-  .then(res => res.json())
-  .then(data => {
-    bookData = data;
+/* =========================
+   FETCH DETAIL BUKU
+========================= */
+if (workId) {
+  fetch(`https://openlibrary.org/works/${workId}.json`)
+    .then(res => res.json())
+    .then(data => {
+      bookData = data;
 
-    document.getElementById("title").innerText = data.title;
+      document.getElementById("title").innerText = data.title || "Tanpa judul";
 
-    document.getElementById("description").innerText =
-      typeof data.description === "string"
-        ? data.description
-        : data.description?.value ?? "Tidak ada sinopsis";
+      document.getElementById("description").innerText =
+        typeof data.description === "string"
+          ? data.description
+          : (data.description?.value ?? "Tidak ada sinopsis");
 
-    if (data.covers?.length) {
-      document.getElementById("cover").src =
-        `https://covers.openlibrary.org/b/id/${data.covers[0]}-L.jpg`;
-    }
-  });
+      if (data.covers?.length) {
+        document.getElementById("cover").src =
+          `https://covers.openlibrary.org/b/id/${data.covers[0]}-L.jpg`;
+      } else {
+        document.getElementById("cover").style.display = "none";
+      }
+    })
+    .catch(() => {
+      document.getElementById("title").innerText = "Gagal memuat detail buku";
+    });
+}
 
-// PINJAM
+/* =========================
+   PINJAM (MEMBER ONLY)
+========================= */
 function pinjam() {
-  localStorage.setItem("borrowBook", JSON.stringify({
-    id: workId,
-    title: bookData.title
-  }));
-  window.location.href = "borrow-form.html";
+  // ✅ safety: kalau admin somehow akses, stop
+  if (isAdminView) return;
+
+  const token = localStorage.getItem(MEMBER_TOKEN_KEY);
+  if (!token) {
+    Swal.fire({
+      icon: "warning",
+      title: "Harus login dulu",
+      text: "Silakan login sebagai member sebelum meminjam."
+    }).then(() => window.location.href = "login.html");
+    return;
+  }
+
+  const api_book_id = workId;
+  const title = (bookData.title || document.getElementById("title").innerText || "").trim();
+  const author = authorParam
+    ? decodeURIComponent(authorParam)
+    : (document.getElementById("author").innerText || null);
+
+  if (!api_book_id || !title || title === "Memuat..." || title === "Gagal memuat detail buku") {
+    Swal.fire({
+      icon: "error",
+      title: "Data tidak lengkap",
+      text: "ID buku atau judul tidak valid."
+    });
+    return;
+  }
+
+  fetch(`${API_URL}/transactions`, {
+    method: "POST",
+    headers: {
+      "Accept": "application/json",
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + token
+    },
+    body: JSON.stringify({ api_book_id, title, author })
+  })
+  .then(async res => {
+    const data = await res.json();
+    return { status: res.status, data };
+  })
+  .then(({ status, data }) => {
+    if (status !== 201) {
+      Swal.fire({
+        icon: "error",
+        title: "Gagal meminjam",
+        text: data.message || "Request peminjaman gagal."
+      });
+      return;
+    }
+
+    Swal.fire({
+      icon: "success",
+      title: "Request peminjaman berhasil 🎉",
+      text: "Menunggu konfirmasi librarian.",
+      confirmButtonText: "OK"
+    }).then(() => {
+      window.location.href = "dashboard.html";
+    });
+  })
+  .catch(() => {
+    Swal.fire({
+      icon: "error",
+      title: "Server Error",
+      text: "Tidak bisa terhubung ke backend."
+    });
+  });
 }
 </script>
 

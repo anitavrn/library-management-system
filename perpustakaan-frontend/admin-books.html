@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Kelola Buku - Librarian</title>
+
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <style>
+    .page-wrap{ min-height:100vh; display:flex; align-items:flex-start; justify-content:center; padding:60px 16px; }
+    .page-card{ width:min(1050px, 95vw); background:#fff; border-radius:18px; box-shadow:0 20px 50px rgba(0,0,0,0.12); padding:28px; }
+    .page-title{ text-align:center; color:#ff6aa5; margin:0 0 18px 0; font-size:32px; font-weight:800; }
+    .top-actions{ display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:16px; }
+    .link-btn{ border:none; background:transparent; color:#ff6aa5; font-weight:700; cursor:pointer; text-decoration:underline; padding:0; }
+
+    .form-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-top:10px; margin-bottom:18px; }
+    .form-row{ display:flex; flex-direction:column; gap:6px; }
+    .form-row label{ font-size:13px; color:#666; font-weight:700; }
+    .form-row input{ padding:12px 12px; border:1px solid #ddd; border-radius:12px; outline:none; }
+    .form-actions{ display:flex; gap:10px; justify-content:flex-end; margin-top:8px; grid-column: 1 / -1; }
+    .btn-primary{ border:none; padding:12px 16px; border-radius:999px; cursor:pointer; font-weight:800; color:#fff; background: linear-gradient(90deg,#ff6aa5,#8cc6ff); }
+    .btn-ghost{ border:1px solid #ddd; padding:12px 16px; border-radius:999px; cursor:pointer; font-weight:800; background:#fff; color:#333; }
+
+    .table-wrap{ margin-top:10px; border-radius:14px; overflow:hidden; border:1px solid #f1f1f1; }
+    table{ width:100%; border-collapse:collapse; }
+    thead th{ background:#ffb6d2; color:#222; text-align:left; padding:14px; font-weight:900; font-size:14px; }
+    tbody td{ padding:14px; border-top:1px solid #f3f3f3; font-size:14px; }
+    .aksi{ display:flex; gap:8px; flex-wrap:wrap; }
+    .btn-small{ border:none; padding:8px 12px; border-radius:999px; cursor:pointer; font-weight:800; font-size:12px; color:#fff; background:#8cc6ff; }
+    .btn-small.danger{ background:#ff6a6a; }
+    .muted{ color:#777; font-size:13px; margin:0; }
+
+    @media (max-width: 820px){
+      .form-grid{ grid-template-columns: 1fr; }
+      .page-card{ padding:18px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="page-wrap">
+  <div class="page-card">
+
+    <div class="top-actions">
+      <button class="link-btn" onclick="window.location.href='admin-dashboard.html'">← Kembali ke Dashboard</button>
+    </div>
+
+    <h1 class="page-title">Manajemen Buku (Inventaris Internal)</h1>
+    <p class="muted" style="text-align:center;margin-top:-8px;">
+      Atur <b>stok</b> dan <b>lokasi</b> untuk buku yang berasal dari request member / input manual.
+    </p>
+
+    <!-- FORM -->
+    <div class="form-grid">
+      <input type="hidden" id="editId" value="">
+
+      <div class="form-row">
+        <label>API Book ID</label>
+        <input id="api_book_id" placeholder="contoh: OL505944W (jika dari OpenLibrary)">
+      </div>
+
+      <div class="form-row">
+        <label>Judul</label>
+        <input id="title" placeholder="Judul buku" required>
+      </div>
+
+      <div class="form-row">
+        <label>Author</label>
+        <input id="author" placeholder="Penulis (opsional)">
+      </div>
+
+      <div class="form-row">
+        <label>Stock</label>
+        <input id="stock" type="number" min="0" value="0">
+      </div>
+
+      <div class="form-actions">
+        <button class="btn-ghost" type="button" onclick="resetForm()">Reset</button>
+        <button class="btn-primary" type="button" onclick="saveBook()">Simpan</button>
+      </div>
+    </div>
+
+    <!-- TABLE -->
+    <h3 style="margin:10px 0 8px 0;">Daftar Buku</h3>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:70px;">ID</th>
+            <th>Title</th>
+            <th style="width:90px;">Stock</th>
+            <th style="width:220px;">Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="tbodyBooks">
+          <tr><td colspan="5" style="padding:18px;">Memuat data...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const API_URL = "http://127.0.0.1:8000/api";
+const ADMIN_TOKEN_KEY = "adminToken";
+const ADMIN_USER_KEY  = "adminUser";
+
+const token = localStorage.getItem(ADMIN_TOKEN_KEY);
+if (!token) window.location.href = "admin-login.html";
+
+// simpan list buku agar tombol edit aman
+window.__books = [];
+
+function authHeaders() {
+  return {
+    "Accept": "application/json",
+    "Content-Type": "application/json",
+    "Authorization": "Bearer " + token
+  };
+}
+
+function escapeHtml(str){
+  return String(str ?? "")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;");
+}
+
+function resetForm(){
+  document.getElementById("editId").value = "";
+  document.getElementById("api_book_id").value = "";
+  document.getElementById("title").value = "";
+  document.getElementById("author").value = "";
+  document.getElementById("stock").value = 0;
+}
+
+function fillForm(book){
+  document.getElementById("editId").value = book.id;
+  document.getElementById("api_book_id").value = book.api_book_id || "";
+  document.getElementById("title").value = book.title || "";
+  document.getElementById("author").value = book.author || "";
+  document.getElementById("stock").value = book.stock ?? 0;
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function fillFormById(id){
+  const book = window.__books.find(b => Number(b.id) === Number(id));
+  if (!book) {
+    Swal.fire({ icon:"error", title:"Data buku tidak ditemukan" });
+    return;
+  }
+  fillForm(book);
+}
+
+function saveBook(){
+  const editId = document.getElementById("editId").value;
+
+  const payload = {
+    api_book_id: document.getElementById("api_book_id").value.trim() || null,
+    title: document.getElementById("title").value.trim(),
+    author: document.getElementById("author").value.trim() || null,
+    stock: Number(document.getElementById("stock").value || 0),
+  };
+
+  if (!payload.title) {
+    Swal.fire({ icon:"warning", title:"Judul wajib diisi" });
+    return;
+  }
+
+  const url = editId ? `${API_URL}/admin/books/${editId}` : `${API_URL}/admin/books`;
+  const method = editId ? "PUT" : "POST";
+
+  fetch(url, { method, headers: authHeaders(), body: JSON.stringify(payload) })
+    .then(async res => ({ status: res.status, data: await res.json().catch(()=>({})) }))
+    .then(({status, data}) => {
+      if (status !== 200 && status !== 201) {
+        Swal.fire({ icon:"error", title:"Gagal", text: data.message || `Gagal menyimpan buku (HTTP ${status})` });
+        return;
+      }
+      Swal.fire({ icon:"success", title:"Berhasil", text:"Data buku tersimpan" });
+      resetForm();
+      loadBooks();
+    })
+    .catch(() => Swal.fire({ icon:"error", title:"Server Error", text:"Tidak bisa terhubung ke backend" }));
+}
+
+function deleteBook(id){
+  Swal.fire({
+    icon: "warning",
+    title: "Hapus buku ini?",
+    text: "Data inventaris akan dihapus.",
+    showCancelButton: true,
+    confirmButtonText: "Ya, hapus",
+    cancelButtonText: "Batal"
+  }).then((r) => {
+    if (!r.isConfirmed) return;
+
+    fetch(`${API_URL}/admin/books/${id}`, { method:"DELETE", headers: authHeaders() })
+      .then(async res => ({ status: res.status, data: await res.json().catch(()=>({})) }))
+      .then(({status, data}) => {
+        if (status !== 200) {
+          Swal.fire({ icon:"error", title:"Gagal", text: data.message || `Gagal hapus (HTTP ${status})` });
+          return;
+        }
+        Swal.fire({ icon:"success", title:"Terhapus" });
+        loadBooks();
+      })
+      .catch(() => Swal.fire({ icon:"error", title:"Server Error", text:"Tidak bisa terhubung ke backend" }));
+  });
+}
+
+function renderBooks(list){
+  window.__books = list || [];
+
+  const tbody = document.getElementById("tbodyBooks");
+  if (!list || list.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" style="padding:18px;">Belum ada data buku.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = list.map(b => `
+    <tr>
+      <td>${b.id}</td>
+      <td>
+        <div style="font-weight:800">${escapeHtml(b.title || "-")}</div>
+        <div style="font-size:12px;color:#777;margin-top:4px">
+          ${b.api_book_id ? `API: <b>${escapeHtml(b.api_book_id)}</b>` : "API: -"}
+          ${b.author ? ` • ${escapeHtml(b.author)}` : ""}
+        </div>
+      </td>
+      <td>${b.stock ?? 0}</td>
+      <td>
+        <div class="aksi">
+          <button class="btn-small" type="button" onclick="fillFormById(${b.id})">Edit</button>
+          <button class="btn-small danger" type="button" onclick="deleteBook(${b.id})">Hapus</button>
+        </div>
+      </td>
+    </tr>
+  `).join("");
+}
+
+function loadBooks(){
+  fetch(`${API_URL}/admin/books`, { headers: { "Accept":"application/json", "Authorization":"Bearer " + token } })
+    .then(async res => ({ status: res.status, data: await res.json().catch(()=>({})) }))
+    .then(({status, data}) => {
+      if (status === 401 || status === 403) {
+        localStorage.removeItem(ADMIN_TOKEN_KEY);
+        localStorage.removeItem(ADMIN_USER_KEY);
+        Swal.fire({ icon:"warning", title:"Sesi admin habis", text:"Silakan login lagi." })
+          .then(()=> window.location.href = "admin-login.html");
+        return;
+      }
+      if (status !== 200) {
+        document.getElementById("tbodyBooks").innerHTML =
+          `<tr><td colspan="5" style="padding:18px;">Gagal memuat data (HTTP ${status}).</td></tr>`;
+        return;
+      }
+
+      const list = Array.isArray(data) ? data : (data.data || []);
+      renderBooks(list);
+    })
+    .catch(() => {
+      document.getElementById("tbodyBooks").innerHTML =
+        `<tr><td colspan="5" style="padding:18px;">Gagal memuat data.</td></tr>`;
+    });
+}
+
+loadBooks();
+</script>
+
+</body>
+</html>
