@@ -4,8 +4,6 @@
   <meta charset="UTF-8">
   <title>Detail Buku</title>
   <link rel="stylesheet" href="css/style.css">
-
-  <!-- SweetAlert -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
@@ -13,15 +11,12 @@
 <div class="detail-page">
   <div class="detail-card">
 
-    <!-- JUDUL -->
     <h1 class="detail-title" id="title">Memuat...</h1>
 
-    <!-- COVER -->
     <div class="cover-wrapper">
       <img id="cover" alt="Cover Buku">
     </div>
 
-    <!-- INFO -->
     <div class="info-row">
       <div class="info-box">
         <span>Author</span>
@@ -37,71 +32,44 @@
       </div>
     </div>
 
-    <!-- SINOPSIS -->
     <div class="synopsis-box">
       <h3>Sinopsis</h3>
       <p id="description">Memuat...</p>
     </div>
 
-    <!-- BUTTON -->
     <div class="action-row">
       <button class="btn-back" id="btnBack">← Kembali</button>
-      <button class="btn-borrow" id="btnBorrow" onclick="pinjam()">📚 Pinjam</button>
+      <button class="btn-borrow" id="btnBorrow" onclick="goToBorrowForm()">📚 Pinjam</button>
     </div>
 
   </div>
 </div>
 
 <script>
-/* =========================
-   CONFIG
-========================= */
-const API_URL = "http://127.0.0.1:8000/api";
-const MEMBER_TOKEN_KEY = "token"; // token member
-
-/* =========================
-   GET PARAMS
-========================= */
 const params = new URLSearchParams(window.location.search);
-const workId = params.get("id");              // contoh: OL505944W ==> api_book_id
+const workId = params.get("id");
 const authorParam = params.get("author");
-const isAdminView = params.get("role") === "admin"; // ✅ MODE ADMIN DARI URL
+const isAdminView = params.get("role") === "admin";
 
-/* =========================
-   MODE ADMIN (HIDE PINJAM + BACK KE ADMIN)
-========================= */
 const btnBack = document.getElementById("btnBack");
 const btnBorrow = document.getElementById("btnBorrow");
 
 if (isAdminView) {
-  // sembunyikan pinjam untuk admin
   btnBorrow.style.display = "none";
-
-  // tombol kembali diarahkan ke dashboard admin
   btnBack.onclick = () => window.location.href = "admin-dashboard.html";
 } else {
-  // default: kembali seperti biasa
   btnBack.onclick = () => history.back();
 }
 
-/* =========================
-   VALIDASI ID
-========================= */
 if (!workId) {
   document.getElementById("title").innerText = "ID buku tidak ditemukan";
 }
 
-/* =========================
-   SET AUTHOR DARI URL
-========================= */
 document.getElementById("author").innerText =
   authorParam ? decodeURIComponent(authorParam) : "-";
 
 let bookData = {};
 
-/* =========================
-   FETCH DETAIL BUKU
-========================= */
 if (workId) {
   fetch(`https://openlibrary.org/works/${workId}.json`)
     .then(res => res.json())
@@ -127,14 +95,12 @@ if (workId) {
     });
 }
 
-/* =========================
-   PINJAM (MEMBER ONLY)
-========================= */
-function pinjam() {
-  // ✅ safety: kalau admin somehow akses, stop
+/* ✅ PINJAM -> ke borrow-form.html dulu */
+function goToBorrowForm() {
   if (isAdminView) return;
 
-  const token = localStorage.getItem(MEMBER_TOKEN_KEY);
+  // cek login member (token)
+  const token = localStorage.getItem("token");
   if (!token) {
     Swal.fire({
       icon: "warning",
@@ -146,9 +112,7 @@ function pinjam() {
 
   const api_book_id = workId;
   const title = (bookData.title || document.getElementById("title").innerText || "").trim();
-  const author = authorParam
-    ? decodeURIComponent(authorParam)
-    : (document.getElementById("author").innerText || null);
+  const author = authorParam ? decodeURIComponent(authorParam) : (document.getElementById("author").innerText || "");
 
   if (!api_book_id || !title || title === "Memuat..." || title === "Gagal memuat detail buku") {
     Swal.fire({
@@ -159,45 +123,14 @@ function pinjam() {
     return;
   }
 
-  fetch(`${API_URL}/transactions`, {
-    method: "POST",
-    headers: {
-      "Accept": "application/json",
-      "Content-Type": "application/json",
-      "Authorization": "Bearer " + token
-    },
-    body: JSON.stringify({ api_book_id, title, author })
-  })
-  .then(async res => {
-    const data = await res.json();
-    return { status: res.status, data };
-  })
-  .then(({ status, data }) => {
-    if (status !== 201) {
-      Swal.fire({
-        icon: "error",
-        title: "Gagal meminjam",
-        text: data.message || "Request peminjaman gagal."
-      });
-      return;
-    }
+  // simpan data buku untuk dipakai di borrow-form.html (sesuai punyamu)
+  localStorage.setItem("borrowBook", JSON.stringify({
+    api_book_id,
+    title,
+    author
+  }));
 
-    Swal.fire({
-      icon: "success",
-      title: "Request peminjaman berhasil 🎉",
-      text: "Menunggu konfirmasi librarian.",
-      confirmButtonText: "OK"
-    }).then(() => {
-      window.location.href = "dashboard.html";
-    });
-  })
-  .catch(() => {
-    Swal.fire({
-      icon: "error",
-      title: "Server Error",
-      text: "Tidak bisa terhubung ke backend."
-    });
-  });
+  window.location.href = "borrow-form.html";
 }
 </script>
 
