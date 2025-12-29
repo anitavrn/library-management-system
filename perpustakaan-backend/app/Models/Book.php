@@ -7,11 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 class Book extends Model
 {
     protected $fillable = [
-    'title',
-    'author',
-    'publisher',
-    'year',
-    'stock'
-];
-
+        'api_book_id',
+        'title',
+        'author',
+        'publisher',
+        'year',
+        'stock',
+    ];
 }

@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dashboard Librarian</title>
+
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        .menu-grid {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 40px;
+        }
+
+        .menu-card {
+            width: 240px;
+            background: #fff;
+            border-radius: 18px;
+            padding: 28px 18px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            cursor: pointer;
+            transition: transform .15s ease;
+        }
+
+        .menu-card:hover {
+            transform: translateY(-3px);
+        }
+
+        .menu-icon {
+            font-size: 46px;
+            margin-bottom: 14px;
+        }
+
+        .menu-title {
+            font-size: 18px;
+            font-weight: 800;
+            margin: 10px 0 10px;
+            color: #333;
+        }
+
+        .menu-desc {
+            font-size: 13px;
+            color: #666;
+            line-height: 1.5;
+        }
+
+        .topbar {
+            position: absolute;
+            top: 18px;
+            right: 18px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .profile-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: none;
+            background: #fff;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, .1);
+            cursor: pointer;
+            font-size: 18px;
+        }
+
+        .wrap-center {
+            width: 100%;
+            text-align: center;
+            margin-top: 40px;
+        }
+
+        .title-big {
+            color: #ff6aa5;
+            font-size: 42px;
+            margin: 0;
+            font-weight: 900;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="topbar">
+        <button class="profile-btn" onclick="showAdminMenu()">👤</button>
+    </div>
+
+    <div class="login-wrapper">
+        <div class="wrap-center">
+            <h1 class="title-big">Dashboard Librarian</h1>
+            <p id="welcome" style="margin-top:14px;color:#444;">Memuat...</p>
+
+            <div class="menu-grid">
+                <div class="menu-card" onclick="go('admin-books.html')">
+                    <div class="menu-icon">📚</div>
+                    <div class="menu-title">Kelola Buku</div>
+                    <div class="menu-desc">Atur stok & lokasi buku (inventaris internal).</div>
+                </div>
+
+                <div class="menu-card" onclick="go('admin-search.html')">
+                    <div class="menu-icon">🔎</div>
+                    <div class="menu-title">Cari Buku (OpenLibrary)</div>
+                    <div class="menu-desc">Cari buku dari OpenLibrary lalu tambah ke inventaris internal.</div>
+                </div>
+
+                <div class="menu-card" onclick="go('admin-borrow.html')">
+                    <div class="menu-icon">✅</div>
+                    <div class="menu-title">Konfirmasi Peminjaman</div>
+                    <div class="menu-desc">Lihat request pending dan approve peminjaman.</div>
+                </div>
+
+                <div class="menu-card" onclick="go('admin-return.html')">
+                    <div class="menu-icon">🔄</div>
+                    <div class="menu-title">Verifikasi Pengembalian</div>
+                    <div class="menu-desc">Verifikasi return & hitung denda keterlambatan.</div>
+                </div>
+
+                <div class="menu-card" onclick="go('admin-fines.html')">
+                    <div class="menu-icon">💰</div>
+                    <div class="menu-title">Kelola Denda</div>
+                    <div class="menu-desc">Lihat transaksi yang memiliki denda (fine_amount).</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "http://127.0.0.1:8000/api";
+        const ADMIN_TOKEN_KEY = "adminToken";
+        const ADMIN_USER_KEY = "adminUser";
+
+        const token = localStorage.getItem(ADMIN_TOKEN_KEY);
+        if (!token) window.location.replace("admin-login.html");
+
+        function go(file) { window.location.href = file; }
+
+        // 
+        function showAdminMenu() {
+            const user = JSON.parse(localStorage.getItem("adminUser"));
+
+            const email = user?.email || "-";
+            const name = user?.full_name || user?.name || "Librarian";
+
+            Swal.fire({
+                html: `
+      <div style="text-align:center">
+        <div style="
+          width:72px;
+          height:72px;
+          border-radius:50%;
+          background:#ffe3f0;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          font-size:32px;
+          margin:0 auto 12px;
+        ">👤</div>
+
+        <div style="font-weight:800;font-size:18px;margin-bottom:4px">
+          ${name}
+        </div>
+
+        <div style="font-size:13px;color:#888;margin-bottom:14px">
+          Librarian<br>${email}
+        </div>
+
+        <button id="btnLogoutAdmin"
+          style="
+            width:100%;
+            padding:12px;
+            border:none;
+            border-radius:999px;
+            background:#ff5a5a;
+            color:#fff;
+            font-weight:800;
+            cursor:pointer;
+          ">
+          Logout
+        </button>
+      </div>
+    `,
+                showConfirmButton: false,
+                showCloseButton: true,
+                width: 360,
+                didOpen: () => {
+                    document
+                        .getElementById("btnLogoutAdmin")
+                        .addEventListener("click", logoutAdmin);
+                }
+            });
+        }
+
+        function logoutAdmin() {
+            fetch(`${API_URL}/logout`, {
+                method: "POST",
+                headers: { "Accept": "application/json", "Authorization": "Bearer " + token }
+            }).finally(() => {
+                localStorage.removeItem(ADMIN_TOKEN_KEY);
+                localStorage.removeItem(ADMIN_USER_KEY);
+                window.location.replace("admin-login.html");
+            });
+        }
+
+        fetch(`${API_URL}/me`, {
+            headers: { "Accept": "application/json", "Authorization": "Bearer " + token }
+        })
+            .then(async res => ({ status: res.status, data: await res.json() }))
+            .then(({ status, data }) => {
+                if (status !== 200 || !data.user || data.user.role !== "admin") throw new Error();
+                const name = data.user.full_name || data.user.name || data.user.email;
+                document.getElementById("welcome").innerText = `Hai, ${name} 👋\nSelamat datang di Sistem Perpustakaan 📚`;
+            })
+            .catch(() => {
+                localStorage.removeItem(ADMIN_TOKEN_KEY);
+                localStorage.removeItem(ADMIN_USER_KEY);
+                window.location.replace("admin-login.html");
+            });
+    </script>
+
+</body>
+
+</html>

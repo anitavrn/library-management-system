@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Cari Buku (OpenLibrary) - Librarian</title>
+
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <style>
+    .page-wrap{
+      min-height:100vh;
+      display:flex;
+      align-items:flex-start;
+      justify-content:center;
+      padding:40px 16px;
+    }
+    .page-card{
+      width:min(1100px, 95vw);
+      background:#fff;
+      border-radius:18px;
+      box-shadow:0 20px 50px rgba(0,0,0,0.12);
+      padding:28px;
+    }
+    .top-actions{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      margin-bottom:10px;
+    }
+    .link-btn{
+      border:none;
+      background:transparent;
+      color:#ff6aa5;
+      font-weight:800;
+      cursor:pointer;
+      text-decoration:underline;
+      padding:0;
+    }
+    .page-title{
+      text-align:center;
+      color:#ff6aa5;
+      margin:0 0 10px 0;
+      font-size:34px;
+      font-weight:900;
+    }
+    .muted{
+      color:#777;
+      font-size:13px;
+      margin:0;
+      text-align:center;
+    }
+    .search-row{
+      display:flex;
+      gap:10px;
+      margin-top:18px;
+    }
+    .search-row input{
+      flex:1;
+      padding:14px 14px;
+      border:1px solid #ddd;
+      border-radius:14px;
+      outline:none;
+      font-size:14px;
+    }
+    .btn-primary{
+      border:none;
+      padding:14px 18px;
+      border-radius:999px;
+      cursor:pointer;
+      font-weight:900;
+      color:#fff;
+      background: linear-gradient(90deg,#ff6aa5,#8cc6ff);
+      white-space:nowrap;
+    }
+    .btn-ghost{
+      border:1px solid #ddd;
+      padding:14px 16px;
+      border-radius:999px;
+      cursor:pointer;
+      font-weight:900;
+      background:#fff;
+      color:#333;
+      white-space:nowrap;
+    }
+
+    .results{
+      margin-top:18px;
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap:14px;
+    }
+    .book-card{
+      border:1px solid #f1f1f1;
+      border-radius:16px;
+      overflow:hidden;
+      display:flex;
+      gap:12px;
+      padding:12px;
+      background:#fff;
+    }
+    .cover{
+      width:74px;
+      height:110px;
+      border-radius:10px;
+      background:#f6f6f6;
+      flex:0 0 auto;
+      overflow:hidden;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      border:1px solid #eee;
+    }
+    .cover img{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      display:block;
+    }
+    .meta{
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      min-width:0;
+    }
+    .title{
+      font-weight:900;
+      font-size:15px;
+      color:#222;
+      line-height:1.2;
+      margin:0;
+      word-break:break-word;
+    }
+    .sub{
+      font-size:12px;
+      color:#777;
+      margin:0;
+    }
+    .pill-row{
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px;
+      margin-top:4px;
+    }
+    .pill{
+      font-size:11px;
+      padding:4px 10px;
+      border-radius:999px;
+      background:#ffd6e5;
+      font-weight:800;
+      color:#333;
+    }
+    .actions{
+      margin-top:auto;
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .btn-small{
+      border:none;
+      padding:10px 12px;
+      border-radius:999px;
+      cursor:pointer;
+      font-weight:900;
+      font-size:12px;
+      color:#fff;
+      background:#5cb85c;
+    }
+    .btn-small.secondary{
+      background:#8cc6ff;
+    }
+
+    .status{
+      margin-top:16px;
+      border:1px dashed #ffd6e5;
+      background:#fff7fb;
+      padding:12px 14px;
+      border-radius:14px;
+      color:#555;
+      font-size:13px;
+    }
+
+    @media (max-width: 980px){
+      .results{ grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 640px){
+      .search-row{ flex-direction:column; }
+      .results{ grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="page-wrap">
+  <div class="page-card">
+
+    <div class="top-actions">
+      <button class="link-btn" onclick="location.href='admin-dashboard.html'">← Kembali ke Dashboard</button>
+      <button class="btn-ghost" onclick="location.href='admin-books.html'">Buka Kelola Buku</button>
+    </div>
+
+    <h1 class="page-title">Cari Buku (OpenLibrary)</h1>
+    <p class="muted">Cari buku dari OpenLibrary, lalu klik <b>Tambah ke Inventaris</b> agar masuk ke database internal kamu.</p>
+
+    <div class="search-row">
+      <input id="q" placeholder="Contoh: harry potter / albert camus / data mining" />
+      <button class="btn-primary" onclick="searchBooks()">Cari</button>
+    </div>
+
+    <div id="status" class="status">Masukkan kata kunci, lalu klik Cari.</div>
+
+    <div id="results" class="results"></div>
+
+  </div>
+</div>
+
+<script>
+const API_URL = "http://127.0.0.1:8000/api";
+const ADMIN_TOKEN_KEY = "adminToken";
+
+const token = localStorage.getItem(ADMIN_TOKEN_KEY);
+if (!token) location.href="admin-login.html";
+
+function H(){
+  return {
+    "Accept":"application/json",
+    "Content-Type":"application/json",
+    "Authorization":"Bearer " + token
+  };
+}
+
+function esc(s){
+  return String(s ?? "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
+}
+
+// ambil work id dari key: "/works/OL123W" -> "OL123W"
+function toWorkId(workKey){
+  if (!workKey) return null;
+  const parts = workKey.split("/");
+  return parts[parts.length - 1] || null;
+}
+
+function setStatus(msg){
+  document.getElementById("status").innerText = msg;
+}
+
+async function searchBooks(){
+  const q = document.getElementById("q").value.trim();
+  if (!q){
+    Swal.fire({ icon:"warning", title:"Kata kunci kosong", text:"Masukkan kata kunci dulu ya." });
+    return;
+  }
+
+  setStatus("Mencari buku di OpenLibrary...");
+  document.getElementById("results").innerHTML = "";
+
+  try{
+    const res = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=24`);
+    const data = await res.json();
+
+    const docs = Array.isArray(data?.docs) ? data.docs : [];
+    if (!docs.length){
+      setStatus("Tidak ada hasil. Coba kata kunci lain.");
+      return;
+    }
+
+    setStatus(`Ditemukan ${docs.length} hasil (maks 24 ditampilkan). Klik "Tambah ke Inventaris" untuk menyimpan ke DB internal.`);
+
+    const html = docs.map(d => {
+      const workId = toWorkId(d.key); // OLxxxxW
+      const title = d.title ?? "-";
+      const author = Array.isArray(d.author_name) ? d.author_name[0] : (d.author_name ?? null);
+      const year = d.first_publish_year ?? null;
+      const coverId = d.cover_i ?? null;
+      const coverUrl = coverId ? `https://covers.openlibrary.org/b/id/${coverId}-M.jpg` : null;
+
+      return `
+        <div class="book-card">
+          <div class="cover">
+            ${coverUrl ? `<img src="${coverUrl}" alt="cover">` : `<span style="font-size:11px;color:#999;padding:8px;text-align:center">No<br>Cover</span>`}
+          </div>
+          <div class="meta">
+            <p class="title">${esc(title)}</p>
+            <p class="sub">${esc(author || "Author tidak tersedia")}</p>
+            <div class="pill-row">
+              <span class="pill">WorkID: ${esc(workId || "-")}</span>
+              ${year ? `<span class="pill">Year: ${esc(year)}</span>` : ``}
+            </div>
+
+            <div class="actions">
+              <button class="btn-small" onclick='addToInventory(${JSON.stringify({
+                api_book_id: workId,
+                title,
+                author: author || null
+              })})'>Tambah ke Inventaris</button>
+
+              <button class="btn-small secondary" onclick='openDetail("${esc(workId || "")}","${esc(author || "")}")'>Lihat Detail</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    document.getElementById("results").innerHTML = html;
+
+  } catch(e){
+    console.error(e);
+    setStatus("Gagal mengambil data OpenLibrary. Coba lagi.");
+  }
+}
+
+// buka halaman detail member (opsional)
+function openDetail(workId, author){
+  if (!workId){
+    Swal.fire({ icon:"warning", title:"Work ID tidak ada", text:"OpenLibrary tidak memberi work id untuk item ini." });
+    return;
+  }
+  // kamu punya halaman book-detail.html?id=OLxxxxW&author=...
+//   location.href = `book-detail.html?id=${encodeURIComponent(workId)}&author=${encodeURIComponent(author || "")}`;
+// contoh: buka detail dari admin
+window.location.href = `book-detail.html?id=${workId}&author=${encodeURIComponent(author)}&role=admin`;
+
+}
+
+async function addToInventory(payload){
+  if (!payload?.title){
+    Swal.fire({ icon:"error", title:"Data tidak lengkap", text:"Judul buku tidak ditemukan." });
+    return;
+  }
+
+  // stock default 0 (librarian atur di admin-books)
+  const body = {
+    api_book_id: payload.api_book_id || null,
+    title: payload.title,
+    author: payload.author || null,
+    stock: 0
+    // location sengaja tidak dikirim (kalau mau hapus location dari UI)
+  };
+
+  try{
+    const res = await fetch(`${API_URL}/admin/books`, {
+      method:"POST",
+      headers: H(),
+      body: JSON.stringify(body)
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (res.status !== 200 && res.status !== 201){
+      Swal.fire({ icon:"error", title:"Gagal", text: data.message || "Gagal menambahkan ke inventaris." });
+      return;
+    }
+
+    Swal.fire({
+      icon:"success",
+      title:"Berhasil",
+      text: data.message || "Buku masuk ke inventaris internal."
+    });
+
+  } catch(e){
+    console.error(e);
+    Swal.fire({ icon:"error", title:"Server Error", text:"Tidak bisa terhubung ke backend." });
+  }
+}
+
+// enter untuk cari
+document.getElementById("q").addEventListener("keydown", (e)=>{
+  if (e.key === "Enter") searchBooks();
+});
+</script>
+
+</body>
+</html>

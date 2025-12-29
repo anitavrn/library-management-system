@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Konfirmasi Peminjaman - Librarian</title>
+
+  <link rel="stylesheet" href="css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <style>
+    .wrap{ min-height:100vh; display:flex; justify-content:center; padding:60px 16px; }
+    .card{ width:min(1100px,95vw); background:#fff; border-radius:18px; box-shadow:0 20px 50px rgba(0,0,0,.12); padding:28px; }
+    h1{ text-align:center; color:#ff6aa5; margin-bottom:8px; }
+    h2{ color:#ff6aa5; margin:28px 0 10px; }
+    .link{ border:none; background:transparent; color:#ff6aa5; font-weight:800; cursor:pointer; text-decoration:underline; }
+    table{ width:100%; border-collapse:collapse; }
+    th{ background:#ffb6d2; padding:12px; text-align:left; }
+    td{ padding:12px; border-top:1px solid #eee; }
+    .btn{ border:none; padding:6px 12px; border-radius:999px; cursor:pointer; font-weight:800; color:#fff; background:#5cb85c; }
+    .badge{ padding:4px 10px; border-radius:999px; font-size:12px; font-weight:800; display:inline-block; }
+    .pending{ background:#ffd6e5; }
+    .borrowed{ background:#c6f6d5; }
+    .muted{ color:#777; font-size:13px; }
+  </style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="card">
+
+    <button class="link" onclick="location.href='admin-dashboard.html'">
+      ← Kembali ke Dashboard
+    </button>
+
+    <h1>Konfirmasi Peminjaman</h1>
+    <p class="muted" style="text-align:center">
+      Request <b>pending</b> akan berpindah ke daftar <b>sedang dipinjam</b> setelah di-approve.
+    </p>
+
+    <!-- ================= PENDING ================= -->
+    <h2>📌 Request Pending</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Trx</th>
+          <th>Member</th>
+          <th>Buku</th>
+          <th>Status</th>
+          <th>Aksi</th>
+        </tr>
+      </thead>
+      <tbody id="pendingBody">
+        <tr><td colspan="5">Memuat data...</td></tr>
+      </tbody>
+    </table>
+
+    <!-- ================= BORROWED ================= -->
+    <h2>📚 Sedang Dipinjam</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Trx</th>
+          <th>Member</th>
+          <th>Buku</th>
+          <th>Tgl Pinjam</th>
+          <th>Jatuh Tempo</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="borrowedBody">
+        <tr><td colspan="6">Memuat data...</td></tr>
+      </tbody>
+    </table>
+
+  </div>
+</div>
+
+<script>
+const API = "http://127.0.0.1:8000/api";
+const token = localStorage.getItem("adminToken");
+if (!token) location.href = "admin-login.html";
+
+const H = () => ({
+  "Accept":"application/json",
+  "Content-Type":"application/json",
+  "Authorization":"Bearer " + token
+});
+
+const esc = s => String(s ?? "-")
+  .replaceAll("&","&amp;")
+  .replaceAll("<","&lt;")
+  .replaceAll(">","&gt;");
+
+function statusLabel(status){
+  switch(status){
+    case "pending":  return "Pending";
+    case "borrowed": return "Dipinjam";
+    case "returned": return "Dikembalikan";
+    default:         return status || "-";
+  }
+}
+
+function fmtDate(val){
+  if (!val) return "-";
+  // kalau backend kirim ISO string, ini bikin lebih rapi
+  try { return String(val).replace("T"," ").slice(0,19); } catch { return val; }
+}
+
+/* ================= LOAD PENDING ================= */
+function loadPending(){
+  fetch(`${API}/admin/transactions/pending-borrow`, { headers: H() })
+    .then(async r => ({ status: r.status, data: await r.json().catch(()=> ({})) }))
+    .then(({status, data}) => {
+      const list = Array.isArray(data) ? data : (data.data || []);
+      const tb = document.getElementById("pendingBody");
+
+      if (status !== 200) {
+        tb.innerHTML = `<tr><td colspan="5">Gagal memuat data pending.</td></tr>`;
+        return;
+      }
+
+      if(!list.length){
+        tb.innerHTML = `<tr><td colspan="5">Tidak ada request pending</td></tr>`;
+        return;
+      }
+
+      tb.innerHTML = list.map(t => `
+        <tr>
+          <td>${t.id}</td>
+          <td>
+            <b>${esc(t.user?.username || t.user?.full_name || t.user?.email)}</b><br>
+            <span class="muted">${esc(t.user?.email || "")}</span>
+          </td>
+          <td>
+            <b>${esc(t.book?.title)}</b><br>
+            <span class="muted">
+              Stock: ${t.book?.stock ?? 0} : ""}
+            </span>
+          </td>
+          <td><span class="badge pending">${statusLabel(t.status)}</span></td>
+          <td><button class="btn" onclick="approve(${t.id})">Approve</button></td>
+        </tr>
+      `).join("");
+    })
+    .catch(() => {
+      document.getElementById("pendingBody").innerHTML =
+        `<tr><td colspan="5">Gagal memuat data pending.</td></tr>`;
+    });
+}
+
+/* ================= LOAD BORROWED ================= */
+function loadBorrowed(){
+  fetch(`${API}/admin/transactions/borrowed`, { headers: H() })
+    .then(async r => ({ status: r.status, data: await r.json().catch(()=> ({})) }))
+    .then(({status, data}) => {
+      const list = Array.isArray(data) ? data : (data.data || []);
+      const tb = document.getElementById("borrowedBody");
+
+      if (status !== 200) {
+        tb.innerHTML = `<tr><td colspan="6">Gagal memuat data sedang dipinjam.</td></tr>`;
+        return;
+      }
+
+      if(!list.length){
+        tb.innerHTML = `<tr><td colspan="6">Belum ada buku dipinjam</td></tr>`;
+        return;
+      }
+
+      tb.innerHTML = list.map(t => `
+        <tr>
+          <td>${t.id}</td>
+          <td>${esc(t.user?.username || t.user?.full_name || t.user?.email)}</td>
+          <td>${esc(t.book?.title)}</td>
+          <td>${fmtDate(t.borrow_date)}</td>
+          <td>${fmtDate(t.due_date)}</td>
+          <td><span class="badge borrowed">${statusLabel(t.status)}</span></td>
+        </tr>
+      `).join("");
+    })
+    .catch(() => {
+      document.getElementById("borrowedBody").innerHTML =
+        `<tr><td colspan="6">Gagal memuat data sedang dipinjam.</td></tr>`;
+    });
+}
+
+/* ================= APPROVE ================= */
+function approve(id){
+  Swal.fire({
+    title:"Approve peminjaman?",
+    input:"number",
+    inputLabel:"Lama pinjam (hari)",
+    inputValue:7,
+    showCancelButton:true,
+    confirmButtonText:"Approve",
+    cancelButtonText:"Batal"
+  }).then(r => {
+    if(!r.isConfirmed) return;
+
+    const days = Number(r.value || 7);
+
+    fetch(`${API}/admin/transactions/${id}/approve?days=${days}`, {
+      method:"PUT",
+      headers: H()
+    })
+    .then(async res => ({ status: res.status, data: await res.json().catch(()=> ({})) }))
+    .then(({status, data}) => {
+      if(status !== 200){
+        Swal.fire("Gagal", data.message || "Gagal approve", "error");
+        return;
+      }
+      Swal.fire("Berhasil", "Peminjaman disetujui", "success");
+      loadPending();
+      loadBorrowed();
+    })
+    .catch(() => Swal.fire("Server Error", "Tidak bisa terhubung ke backend", "error"));
+  });
+}
+
+loadPending();
+loadBorrowed();
+</script>
+
+</body>
+</html>
