@@ -70,8 +70,19 @@ function statusLabel(status) {
 
 function fmtDate(dt){
   if (!dt) return "-";
-  // dt biasanya "2025-12-28T..." -> ambil yyyy-mm-dd
-  return String(dt).substring(0, 10);
+  return String(dt).substring(0, 10); // YYYY-MM-DD
+}
+
+/* ✅ INTI FIX: tentukan tanggal yang ditampilkan */
+function displayReturnOrDue(trx){
+  // kalau masih dipinjam, yang penting adalah due_date (jatuh tempo)
+  if (trx.status === "borrowed") return fmtDate(trx.due_date);
+
+  // kalau sudah dikembalikan, tampilkan return_date benerannya
+  if (trx.status === "returned") return fmtDate(trx.return_date);
+
+  // pending / return_pending belum ada tanggal kembali yang pasti
+  return "-";
 }
 
 /* =========================
@@ -116,7 +127,7 @@ fetch(`${API_URL}/transactions/my`, {
     <tr>
       <td>${trx.book?.title || "-"}</td>
       <td>${fmtDate(trx.borrow_date)}</td>
-      <td>${fmtDate(trx.return_date)}</td>
+      <td>${displayReturnOrDue(trx)}</td>
       <td>${statusLabel(trx.status)}</td>
     </tr>
   `).join("");

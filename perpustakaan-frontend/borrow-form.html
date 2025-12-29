@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <title>Form Peminjaman</title>
   <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
 
@@ -31,28 +32,29 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
 <script>
-/* ================= AUTH CHECK ================= */
-const currentUser = JSON.parse(localStorage.getItem("currentUser"));
-if (!currentUser) {
+const API_URL = "http://127.0.0.1:8000/api";
+const MEMBER_TOKEN_KEY = "token";
+
+/* ✅ AUTH CHECK: pakai token (project kamu sekarang sudah pakai Sanctum) */
+const token = localStorage.getItem(MEMBER_TOKEN_KEY);
+if (!token) {
   window.location.href = "login.html";
 }
 
-/* ================= AMBIL DATA BUKU ================= */
+/* ✅ AMBIL DATA BUKU dari localStorage (dari book-detail.html) */
 const bookData = JSON.parse(localStorage.getItem("borrowBook"));
-if (!bookData) {
+if (!bookData || !bookData.api_book_id || !bookData.title) {
   Swal.fire({
     icon: "error",
     title: "Data tidak ditemukan",
-    text: "Silakan pilih buku terlebih dahulu"
+    text: "Silakan pilih buku terlebih dahulu."
   }).then(() => window.location.href = "books.html");
 }
 
 document.getElementById("bookTitle").value = bookData.title;
 
-/* ================= SUBMIT ================= */
+/* ✅ SUBMIT: sekarang kirim ke backend, popup sama seperti dulu */
 document.getElementById("borrowForm").addEventListener("submit", function (e) {
   e.preventDefault();
 
@@ -77,25 +79,55 @@ document.getElementById("borrowForm").addEventListener("submit", function (e) {
     return;
   }
 
-  /* ================= SIMPAN PER USER ================= */
-  const key = `borrowHistory_${currentUser.email}`;
-  const history = JSON.parse(localStorage.getItem(key)) || [];
+  fetch(`${API_URL}/transactions`, {
+    method: "POST",
+    headers: {
+      "Accept": "application/json",
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + token
+    },
+    body: JSON.stringify({
+      api_book_id: bookData.api_book_id,
+      title: bookData.title,
+      author: bookData.author || null
+    })
+  })
+  .then(async res => {
+    const data = await res.json();
+    return { status: res.status, data };
+  })
+  .then(({ status, data }) => {
+    if (status !== 201) {
+      Swal.fire({
+        icon: "error",
+        title: "Gagal meminjam",
+        text: data.message || "Request peminjaman gagal."
+      });
+      return;
+    }
 
-  history.push({
-    title: bookData.title,
-    borrowDate,
-    returnDate,
-    status: "Dipinjam"
-  });
+    // bersihkan cache book yang dipinjam supaya tidak nyangkut
+    localStorage.removeItem("borrowBook");
 
-  localStorage.setItem(key, JSON.stringify(history));
+    Swal.fire({
+      icon: "success",
+      title: "Request peminjaman berhasil 🎉",
+      text: "Menunggu konfirmasi librarian.",
+      confirmButtonText: "OK"
+    }).then(() => {
+      // sesuai yang kamu minta: balik ke dashboard member
+      window.location.href = "dashboard.html";
 
-  Swal.fire({
-    icon: "success",
-    title: "Peminjaman Berhasil 🎉",
-    confirmButtonText: "Lihat Riwayat"
-  }).then(() => {
-    window.location.href = "borrow-history.html";
+      // kalau kamu mau ke riwayat transaksi dari backend nanti:
+      // window.location.href = "borrow-history.html";
+    });
+  })
+  .catch(() => {
+    Swal.fire({
+      icon: "error",
+      title: "Server Error",
+      text: "Tidak bisa terhubung ke backend."
+    });
   });
 });
 </script>
