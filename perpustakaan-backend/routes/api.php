@@ -31,9 +31,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Transaksi member
     Route::post('/transactions', [TransactionController::class, 'borrow']);
-    Route::put('/transactions/{id}/return', [TransactionController::class, 'returnBook']);
+    Route::put('/transactions/{id}/return', [TransactionController::class, 'requestReturn']);
     // Lihat daftar pengembalian pending
     Route::get('/transactions/my', [TransactionController::class, 'myTransactions']);
+
 
     // Logout (member & admin)
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -65,5 +66,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Lihat daftar pengembalian pending
         Route::get('/transactions/borrowed', [TransactionController::class, 'borrowed']);
+        
+        // Pengembalian buku
+        Route::get('/transactions/return-pending', [TransactionController::class, 'pendingReturn']);
+        Route::put('/transactions/{id}/approve-return', [TransactionController::class, 'approveReturn']);
     });
 });
