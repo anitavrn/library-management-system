@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Pengembalian Buku</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+      .fine-amount {
+        color: #d32f2f;
+        font-weight: bold;
+      }
+      .fine-zero {
+        color: #388e3c;
+      }
+      .status-badge {
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 13px;
+        font-weight: 500;
+        display: inline-block;
+      }
+      .status-not-returned {
+        background-color: #fff3cd;
+        color: #856404;
+      }
+      .status-pending {
+        background-color: #cce5ff;
+        color: #004085;
+      }
+      .status-returned {
+        background-color: #d4edda;
+        color: #155724;
+      }
+      .btn-return {
+        padding: 6px 16px;
+        background-color: #28a745;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      .btn-return:hover {
+        background-color: #218838;
+      }
+      .btn-return:disabled {
+        background-color: #6c757d;
+        cursor: not-allowed;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="borrow-page">
+      <div class="borrow-card" style="width: 900px">
+        <h2 class="borrow-title">Pengembalian Buku</h2>
+
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th>Judul Buku</th>
+              <th>Tanggal Pinjam</th>
+              <th>Tenggat Waktu</th>
+              <th>Denda Estimasi</th>
+              <th>Status</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="returnBody">
+            <tr>
+              <td colspan="6" style="text-align: center">Memuat data...</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="action-row">
+          <button
+            class="btn-back"
+            onclick="window.location.href='dashboard.html'"
+          >
+            ← Kembali ke Dashboard
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      /* =========================
+   CONFIG
+========================= */
+      const API_URL = 'http://127.0.0.1:8000/api';
+      const TOKEN_KEY = 'token'; // token member
+      const USER_KEY = 'currentUser'; // user member
+
+      /* =========================
+   AUTH CHECK
+========================= */
+      const token = localStorage.getItem(TOKEN_KEY);
+      const currentUser = localStorage.getItem(USER_KEY);
+
+      if (!token || !currentUser) {
+        window.location.href = 'login.html';
+      }
+
+      /* =========================
+   HELPER FUNCTIONS
+========================= */
+      function fmtDate(dt) {
+        if (!dt) return '-';
+        return String(dt).substring(0, 10); // YYYY-MM-DD
+      }
+
+      function formatCurrency(amount) {
+        return new Intl.NumberFormat('id-ID', {
+          style: 'currency',
+          currency: 'IDR',
+          minimumFractionDigits: 0,
+        }).format(amount);
+      }
+
+      // Hitung denda estimasi (di frontend untuk preview)
+      function calculateFine(dueDate) {
+        if (!dueDate) return 0;
+
+        const due = new Date(dueDate);
+        const today = new Date();
+
+        // Reset waktu ke midnight untuk perbandingan tanggal saja
+        due.setHours(0, 0, 0, 0);
+        today.setHours(0, 0, 0, 0);
+
+        if (today <= due) return 0;
+
+        const daysLate = Math.floor((today - due) / (1000 * 60 * 60 * 24));
+        return daysLate * 1000; // Rp 1000 per hari
+      }
+
+      function getStatusBadge(status) {
+        switch (status) {
+          case 'borrowed':
+            return '<span class="status-badge status-not-returned">Belum Dikembalikan</span>';
+          case 'return_pending':
+            return '<span class="status-badge status-pending">Menunggu Konfirmasi</span>';
+          case 'returned':
+            return '<span class="status-badge status-returned">Berhasil Dikembalikan</span>';
+          default:
+            return '<span class="status-badge">' + status + '</span>';
+        }
+      }
+
+      /* =========================
+   RETURN ACTIONS
+========================= */
+      function returnBook(transactionId) {
+        Swal.fire({
+          title: 'Konfirmasi Pengembalian',
+          text: 'Apakah Anda yakin ingin mengembalikan buku ini?',
+          icon: 'question',
+          showCancelButton: true,
+          confirmButtonColor: '#28a745',
+          cancelButtonColor: '#d33',
+          confirmButtonText: 'Ya, Kembalikan',
+          cancelButtonText: 'Batal',
+        }).then((result) => {
+          if (result.isConfirmed) {
+            fetch(`${API_URL}/transactions/${transactionId}/return`, {
+              method: 'PUT',
+              headers: {
+                Accept: 'application/json',
+                Authorization: 'Bearer ' + token,
+              },
+            })
+              .then(async (res) => {
+                const data = await res.json();
+                return { status: res.status, data };
+              })
+              .then(({ status, data }) => {
+                if (status === 200) {
+                  Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil!',
+                    text: data.message,
+                    timer: 2000,
+                    showConfirmButton: false,
+                  });
+                  loadReturnData(); // Reload data
+                } else {
+                  Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal!',
+                    text: data.message || 'Error',
+                  });
+                }
+              })
+              .catch((err) => {
+                console.error(err);
+                Swal.fire({
+                  icon: 'error',
+                  title: 'Error',
+                  text: 'Tidak dapat terhubung ke server',
+                });
+              });
+          }
+        });
+      }
+
+      /* =========================
+   LOAD RETURN DATA
+========================= */
+      const returnBody = document.getElementById('returnBody');
+
+      function loadReturnData() {
+        fetch(`${API_URL}/transactions/my`, {
+          headers: {
+            Accept: 'application/json',
+            Authorization: 'Bearer ' + token,
+          },
+        })
+          .then(async (res) => {
+            const data = await res.json();
+            return { status: res.status, data };
+          })
+          .then(({ status, data }) => {
+            if (status !== 200) {
+              returnBody.innerHTML = `
+        <tr><td colspan="6" style="text-align:center">
+          Gagal memuat data: ${data.message || 'Error'}
+        </td></tr>
+      `;
+              return;
+            }
+
+            const list = data.data || [];
+
+            // Filter hanya yang borrowed, return_pending, atau returned
+            const returnableBooks = list.filter(
+              (trx) =>
+                trx.status === 'borrowed' ||
+                trx.status === 'return_pending' ||
+                trx.status === 'returned'
+            );
+
+            if (returnableBooks.length === 0) {
+              returnBody.innerHTML = `
+        <tr>
+          <td colspan="6" style="text-align:center">
+            Tidak ada buku yang perlu dikembalikan
+          </td>
+        </tr>
+      `;
+              return;
+            }
+
+            returnBody.innerHTML = returnableBooks
+              .map((trx) => {
+                const fine = calculateFine(trx.due_date);
+                const fineDisplay =
+                  fine > 0
+                    ? `<span class="fine-amount">${formatCurrency(fine)}</span>`
+                    : `<span class="fine-zero">Rp 0</span>`;
+
+                let actionBtn = '';
+                if (trx.status === 'borrowed') {
+                  actionBtn = `<button class="btn-return" onclick="returnBook(${trx.id})">Kembalikan Buku</button>`;
+                } else if (trx.status === 'return_pending') {
+                  actionBtn =
+                    '<button class="btn-return" disabled>Menunggu</button>';
+                } else if (trx.status === 'returned') {
+                  actionBtn = '<span style="color: #666;">-</span>';
+                }
+
+                return `
+        <tr>
+          <td>${trx.book?.title || '-'}</td>
+          <td>${fmtDate(trx.borrow_date)}</td>
+          <td>${fmtDate(trx.due_date)}</td>
+          <td>${fineDisplay}</td>
+          <td>${getStatusBadge(trx.status)}</td>
+          <td>${actionBtn}</td>
+        </tr>
+      `;
+              })
+              .join('');
+          })
+          .catch(() => {
+            returnBody.innerHTML = `
+      <tr><td colspan="6" style="text-align:center">
+        Tidak bisa terhubung ke backend.
+      </td></tr>
+    `;
+          });
+      }
+
+      // Load data saat halaman dibuka
+      loadReturnData();
+    </script>
+  </body>
+</html>

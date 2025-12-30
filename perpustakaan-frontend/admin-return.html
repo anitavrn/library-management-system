@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Verifikasi Pengembalian</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+      .admin-wrapper {
+        min-height: 100vh;
+        background: linear-gradient(135deg, #ffd1e8, #e0f0ff);
+        padding: 40px;
+      }
+      .admin-card {
+        max-width: 1200px;
+        margin: 0 auto;
+        background: #fff;
+        border-radius: 16px;
+        padding: 30px;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+      }
+      .admin-title {
+        text-align: center;
+        color: #ff6fae;
+        margin-bottom: 30px;
+      }
+      .table-wrapper {
+        overflow-x: auto;
+      }
+      .return-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+      }
+      .return-table th {
+        background: #ffe0f0;
+        color: #ff5fa2;
+        padding: 12px;
+        text-align: left;
+        font-weight: 600;
+      }
+      .return-table td {
+        padding: 12px;
+        border-bottom: 1px solid #eee;
+      }
+      .return-table tr:hover {
+        background: #fafafa;
+      }
+      .btn-approve {
+        padding: 6px 16px;
+        background: #28a745;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      .btn-approve:hover {
+        background: #218838;
+      }
+      .fine-amount {
+        color: #d32f2f;
+        font-weight: bold;
+      }
+      .fine-zero {
+        color: #388e3c;
+      }
+      .topbar {
+        position: fixed;
+        top: 18px;
+        right: 18px;
+        z-index: 1000;
+      }
+      .profile-btn {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        border: none;
+        background: #fff;
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        cursor: pointer;
+        font-size: 18px;
+      }
+      .muted {
+        color: #777;
+        font-size: 13px;
+      }
+      .link {
+        border: none;
+        background: transparent;
+        color: #ff6aa5;
+        font-weight: 800;
+        cursor: pointer;
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="topbar">
+      <button class="profile-btn" onclick="showAdminMenu()">👤</button>
+    </div>
+
+    <div class="admin-wrapper">
+      <div class="admin-card">
+        <button class="link" onclick="location.href='admin-dashboard.html'">
+          ← Kembali ke Dashboard
+        </button>
+
+        <h2 class="admin-title">🔄 Verifikasi Pengembalian Buku</h2>
+
+        <div class="table-wrapper">
+          <table class="return-table">
+            <thead>
+              <tr>
+                <th>Member</th>
+                <th>Judul Buku</th>
+                <th>Tanggal Pinjam</th>
+                <th>Tenggat Waktu</th>
+                <th>Tanggal Kembali</th>
+                <th>Denda Estimasi</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="returnTableBody">
+              <tr>
+                <td colspan="7" style="text-align: center">Memuat data...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      /* =========================
+   CONFIG
+========================= */
+      const API_URL = 'http://127.0.0.1:8000/api';
+      const ADMIN_TOKEN_KEY = 'adminToken';
+      const ADMIN_USER_KEY = 'adminUser';
+
+      /* =========================
+   AUTH CHECK
+========================= */
+      const token = localStorage.getItem(ADMIN_TOKEN_KEY);
+      if (!token) {
+        window.location.replace('admin-login.html');
+      }
+
+      /* =========================
+   HELPER FUNCTIONS
+========================= */
+      function fmtDate(dt) {
+        if (!dt) return '-';
+        return String(dt).substring(0, 10);
+      }
+
+      function formatCurrency(amount) {
+        return new Intl.NumberFormat('id-ID', {
+          style: 'currency',
+          currency: 'IDR',
+          minimumFractionDigits: 0,
+        }).format(amount);
+      }
+
+      // Escape HTML untuk keamanan
+      function esc(s) {
+        return String(s ?? '-')
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;');
+      }
+
+      // Hitung denda estimasi
+      function calculateFine(dueDate) {
+        if (!dueDate) return 0;
+
+        const due = new Date(dueDate);
+        const today = new Date();
+
+        due.setHours(0, 0, 0, 0);
+        today.setHours(0, 0, 0, 0);
+
+        if (today <= due) return 0;
+
+        const daysLate = Math.floor((today - due) / (1000 * 60 * 60 * 24));
+        return daysLate * 1000;
+      }
+
+      /* =========================
+   ADMIN MENU
+========================= */
+      function showAdminMenu() {
+        const user = JSON.parse(localStorage.getItem(ADMIN_USER_KEY));
+        const email = user?.email || '-';
+        const name = user?.full_name || user?.name || 'Librarian';
+
+        Swal.fire({
+          html: `
+      <div style="text-align:center">
+        <div style="
+          width:72px;
+          height:72px;
+          border-radius:50%;
+          background:#ffe3f0;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          font-size:32px;
+          margin:0 auto 12px;
+        ">👤</div>
+
+        <div style="font-weight:800;font-size:18px;margin-bottom:4px">
+          ${name}
+        </div>
+
+        <div style="font-size:13px;color:#888;margin-bottom:14px">
+          Librarian<br>${email}
+        </div>
+
+        <button id="btnLogoutAdmin"
+          style="
+            width:100%;
+            padding:12px;
+            border:none;
+            border-radius:999px;
+            background:#ff5a5a;
+            color:#fff;
+            font-weight:800;
+            cursor:pointer;
+          ">
+          Logout
+        </button>
+      </div>
+    `,
+          showConfirmButton: false,
+          showCloseButton: true,
+          width: 360,
+          didOpen: () => {
+            document
+              .getElementById('btnLogoutAdmin')
+              .addEventListener('click', logoutAdmin);
+          },
+        });
+      }
+
+      function logoutAdmin() {
+        fetch(`${API_URL}/logout`, {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+            Authorization: 'Bearer ' + token,
+          },
+        }).finally(() => {
+          localStorage.removeItem(ADMIN_TOKEN_KEY);
+          localStorage.removeItem(ADMIN_USER_KEY);
+          window.location.replace('admin-login.html');
+        });
+      }
+
+      /* =========================
+   APPROVE RETURN
+========================= */
+      function approveReturn(transactionId) {
+        Swal.fire({
+          title: 'Konfirmasi Pengembalian',
+          text: 'Apakah Anda yakin ingin menyetujui pengembalian buku ini?',
+          icon: 'question',
+          showCancelButton: true,
+          confirmButtonColor: '#28a745',
+          cancelButtonColor: '#d33',
+          confirmButtonText: 'Ya, Setujui',
+          cancelButtonText: 'Batal',
+        }).then((result) => {
+          if (result.isConfirmed) {
+            fetch(
+              `${API_URL}/admin/transactions/${transactionId}/approve-return`,
+              {
+                method: 'PUT',
+                headers: {
+                  Accept: 'application/json',
+                  Authorization: 'Bearer ' + token,
+                },
+              }
+            )
+              .then(async (res) => {
+                const data = await res.json();
+                return { status: res.status, data };
+              })
+              .then(({ status, data }) => {
+                if (status === 200) {
+                  Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil!',
+                    text: data.message,
+                    timer: 2000,
+                    showConfirmButton: false,
+                  });
+                  loadReturnPending();
+                } else {
+                  Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal!',
+                    text: data.message || 'Terjadi kesalahan',
+                  });
+                }
+              })
+              .catch((err) => {
+                console.error(err);
+                Swal.fire({
+                  icon: 'error',
+                  title: 'Error',
+                  text: 'Tidak dapat terhubung ke server',
+                });
+              });
+          }
+        });
+      }
+
+      /* =========================
+   LOAD DATA
+========================= */
+      const returnTableBody = document.getElementById('returnTableBody');
+
+      function loadReturnPending() {
+        fetch(`${API_URL}/admin/transactions/return-pending`, {
+          headers: {
+            Accept: 'application/json',
+            Authorization: 'Bearer ' + token,
+          },
+        })
+          .then(async (res) => {
+            const data = await res.json();
+            return { status: res.status, data };
+          })
+          .then(({ status, data }) => {
+            if (status !== 200) {
+              returnTableBody.innerHTML = `
+        <tr><td colspan="7" style="text-align:center">
+          Gagal memuat data: ${data.message || 'Error'}
+        </td></tr>
+      `;
+              return;
+            }
+
+            const list = data.data || [];
+
+            if (list.length === 0) {
+              returnTableBody.innerHTML = `
+        <tr>
+          <td colspan="7" style="text-align:center">
+            Tidak ada pengembalian yang menunggu verifikasi
+          </td>
+        </tr>
+      `;
+              return;
+            }
+
+            returnTableBody.innerHTML = list
+              .map((trx) => {
+                const fine = calculateFine(trx.due_date);
+                const fineDisplay =
+                  fine > 0
+                    ? `<span class="fine-amount">${formatCurrency(fine)}</span>`
+                    : `<span class="fine-zero">Rp 0</span>`;
+
+                return `
+        <tr>
+          <td>
+            <b>${esc(
+              trx.user?.username ||
+                trx.user?.full_name ||
+                trx.user?.name ||
+                trx.user?.email
+            )}</b><br>
+            <span class="muted">${esc(trx.user?.email || '')}</span>
+          </td>
+          <td>${esc(trx.book?.title || '-')}</td>
+          <td>${fmtDate(trx.borrow_date)}</td>
+          <td>${fmtDate(trx.due_date)}</td>
+          <td>${fmtDate(trx.updated_at)}</td>
+          <td>${fineDisplay}</td>
+          <td>
+            <button class="btn-approve" onclick="approveReturn(${trx.id})">
+              Setujui
+            </button>
+          </td>
+        </tr>
+      `;
+              })
+              .join('');
+          })
+          .catch(() => {
+            returnTableBody.innerHTML = `
+      <tr><td colspan="7" style="text-align:center">
+        Tidak bisa terhubung ke backend.
+      </td></tr>
+    `;
+          });
+      }
+
+      // Load data saat halaman dibuka
+      loadReturnPending();
+    </script>
+  </body>
+</html>

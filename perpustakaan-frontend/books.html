@@ -1,139 +1,139 @@
 <!DOCTYPE html>
 <html lang="id">
-<head>
-  <meta charset="UTF-8">
-  <title>Daftar Buku</title>
-  <link rel="stylesheet" href="css/style.css">
-</head>
-<body>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Daftar Buku</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <div class="page-wrapper">
+      <div class="card-container">
+        <h2 class="page-title">Daftar Buku</h2>
 
-<div class="page-wrapper">
-  <div class="card-container">
+        <!-- SEARCH -->
+        <input
+          type="text"
+          id="searchInput"
+          placeholder="Cari buku..."
+          class="search-input"
+        />
 
-    <h2 class="page-title">Daftar Buku</h2>
+        <!-- LIMIT DROPDOWN -->
+        <div
+          style="margin: 12px 0; display: flex; gap: 8px; align-items: center"
+        >
+          <label>Jumlah buku:</label>
+          <select id="limitSelect">
+            <option value="10" selected>10</option>
+            <option value="25">25</option>
+            <option value="50">50</option>
+            <option value="75">75</option>
+            <option value="100">100</option>
+            <option value="125">125</option>
+            <option value="150">150</option>
+          </select>
+        </div>
 
-    <!-- SEARCH -->
-    <input
-      type="text"
-      id="searchInput"
-      placeholder="Cari buku..."
-      class="search-input"
-    >
+        <!-- TABLE -->
+        <table class="book-table">
+          <thead>
+            <tr>
+              <th>Judul</th>
+              <th>Penulis</th>
+            </tr>
+          </thead>
+          <tbody id="bookList">
+            <tr>
+              <td colspan="2" style="text-align: center">Memuat data...</td>
+            </tr>
+          </tbody>
+        </table>
 
-    <!-- LIMIT DROPDOWN -->
-    <div style="margin: 12px 0; display:flex; gap:8px; align-items:center;">
-      <label>Jumlah buku:</label>
-      <select id="limitSelect">
-        <option value="25">25</option>
-        <option value="50">50</option>
-        <option value="75">75</option>
-        <option value="100">100</option>
-        <option value="125">125</option>
-        <option value="150">150</option>
-      </select>
+        <!-- BUTTON KEMBALI -->
+        <div style="margin-top: 20px">
+          <button class="btn-back" onclick="location.href='dashboard.html'">
+            ← Kembali ke Dashboard
+          </button>
+        </div>
+      </div>
     </div>
 
-    <!-- TABLE -->
-    <table class="book-table">
-      <thead>
-        <tr>
-          <th>Judul</th>
-          <th>Penulis</th>
-        </tr>
-      </thead>
-      <tbody id="bookList">
-        <tr>
-          <td colspan="2" style="text-align:center;">Memuat data...</td>
-        </tr>
-      </tbody>
-    </table>
+    <script>
+      const tbody = document.getElementById('bookList');
+      const searchInput = document.getElementById('searchInput');
+      const limitSelect = document.getElementById('limitSelect');
 
-    <!-- BUTTON KEMBALI -->
-    <div style="margin-top:20px;">
-      <button class="btn-back" onclick="location.href='dashboard.html'">
-        ← Kembali ke Dashboard
-      </button>
-    </div>
+      let currentQuery = 'novel';
 
-  </div>
-</div>
-
-<script>
-const tbody = document.getElementById("bookList");
-const searchInput = document.getElementById("searchInput");
-const limitSelect = document.getElementById("limitSelect");
-
-let currentQuery = "novel";
-
-/* =========================
+      /* =========================
    LOAD BUKU
 ========================= */
-function loadBooks(query) {
-  const limit = limitSelect.value;
+      function loadBooks(query) {
+        const limit = limitSelect.value;
 
-  tbody.innerHTML = `
+        tbody.innerHTML = `
     <tr>
       <td colspan="2" style="text-align:center;">Memuat data...</td>
     </tr>
   `;
 
-  fetch(`https://openlibrary.org/search.json?q=${query}`)
-    .then(res => res.json())
-    .then(data => {
-      const books = data.docs.slice(0, limit);
-      tbody.innerHTML = "";
+        fetch(`https://openlibrary.org/search.json?q=${query}`)
+          .then((res) => res.json())
+          .then((data) => {
+            const books = data.docs.slice(0, limit);
+            tbody.innerHTML = '';
 
-      if (books.length === 0) {
-        tbody.innerHTML = `
+            if (books.length === 0) {
+              tbody.innerHTML = `
           <tr>
             <td colspan="2" style="text-align:center;">Buku tidak ditemukan</td>
           </tr>
         `;
-        return;
-      }
+              return;
+            }
 
-      books.forEach(book => {
-        if (!book.key) return;
+            books.forEach((book) => {
+              if (!book.key) return;
 
-        const workId = book.key.replace("/works/", "");
-        const author = book.author_name?.[0] ?? "-";
+              const workId = book.key.replace('/works/', '');
+              const author = book.author_name?.[0] ?? '-';
 
-        tbody.innerHTML += `
+              tbody.innerHTML += `
           <tr style="cursor:pointer"
-              onclick="openDetail('${workId}', '${encodeURIComponent(author)}')">
+              onclick="openDetail('${workId}', '${encodeURIComponent(
+                author
+              )}')">
             <td>${book.title}</td>
             <td>${author}</td>
           </tr>
         `;
-      });
-    });
-}
+            });
+          });
+      }
 
-/* =========================
+      /* =========================
    PINDAH KE DETAIL
 ========================= */
-function openDetail(id, author) {
-  window.location.href =
-    `book-detail.html?id=${id}&author=${author}`;
-}
+      function openDetail(id, author) {
+        window.location.href = `book-detail.html?id=${id}&author=${author}`;
+      }
 
-/* =========================
+      /* =========================
    EVENT
 ========================= */
-searchInput.addEventListener("keyup", function () {
-  if (this.value.length >= 3) {
-    currentQuery = this.value;
-    loadBooks(currentQuery);
-  }
-});
+      searchInput.addEventListener('keyup', function () {
+        if (this.value.length >= 3) {
+          currentQuery = this.value;
+          loadBooks(currentQuery);
+        }
+      });
 
-limitSelect.addEventListener("change", function () {
-  loadBooks(currentQuery);
-});
+      limitSelect.addEventListener('change', function () {
+        loadBooks(currentQuery);
+      });
 
-/* LOAD AWAL */
-loadBooks(currentQuery);
-</script>
-
-</body>
+      /* LOAD AWAL */
+      loadBooks(currentQuery);
+    </script>
+  </body>
 </html>
