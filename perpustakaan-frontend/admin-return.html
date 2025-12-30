@@ -85,6 +85,14 @@
         color: #777;
         font-size: 13px;
       }
+      .link {
+        border: none;
+        background: transparent;
+        color: #ff6aa5;
+        font-weight: 800;
+        cursor: pointer;
+        text-decoration: underline;
+      }
     </style>
   </head>
   <body>
@@ -94,6 +102,10 @@
 
     <div class="admin-wrapper">
       <div class="admin-card">
+        <button class="link" onclick="location.href='admin-dashboard.html'">
+          ← Kembali ke Dashboard
+        </button>
+
         <h2 class="admin-title">🔄 Verifikasi Pengembalian Buku</h2>
 
         <div class="table-wrapper">
@@ -115,15 +127,6 @@
               </tr>
             </tbody>
           </table>
-        </div>
-
-        <div class="action-row" style="margin-top: 30px">
-          <button
-            class="btn-back"
-            onclick="window.location.href='admin-dashboard.html'"
-          >
-            ← Kembali ke Dashboard
-          </button>
         </div>
       </div>
     </div>
