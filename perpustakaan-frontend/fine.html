@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Denda - Member</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    /* small local styles for badges in the fines table */
+    .badge-paid { display:inline-block;padding:8px 12px;border-radius:12px;background:#dff3e6;color:#116644;font-weight:600 }
+    .badge-unpaid { display:inline-block;padding:8px 12px;border-radius:12px;background:#fff6db;color:#7a5800;font-weight:600 }
+    .fines-actions button { margin:0 }
+    .card-container { max-width: 980px }
+    .page-title { color: #ff5fa2; text-align:center; font-size:28px; margin-bottom:6px }
+    .welcome-subtext { text-align: center; margin: 6px auto 12px; color: #444; max-width:720px; }
+    .btn-back.wide-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100% !important;
+      max-width: 100%;
+      padding: 0 24px;
+      height: 44px;
+      border-radius: 999px;
+      background: #ff5a50;
+      color: white;
+      font-weight: 700;
+      font-size: 14px;
+      text-align: center;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+      border: none;
+      cursor: pointer;
+    }
+    /* summary pill removed per UI request */
+    .fine-amount { font-size: 18px; font-weight: 700; color: #b12704; }
+    /* tighten spacing between title and description/card */
+    .borrow-title { margin-bottom: 6px !important; }
+    /* make the main page heading larger to improve prominence */
+    .borrow-title {
+      font-size: 36px !important;
+      color: #ff5fa2;
+      text-align: center;
+      font-weight: 800;
+      margin-bottom: 8px !important;
+    }
+    .borrow-card { padding-top: 14px !important; }
+    /* increase table font size for better readability */
+    .history-table th {
+      font-size: 16px;
+      font-weight: 700;
+      padding: 14px 12px;
+    }
+    .history-table td {
+      font-size: 15px;
+      padding: 12px;
+      color: #222;
+    }
+    /* center the table inside the card and center text in headers/cells */
+    .history-table {
+      margin: 0 auto;
+      width: 100%;
+      max-width: 820px;
+      table-layout: auto;
+    }
+    .history-table th, .history-table td {
+      text-align: center;
+    }
+    /* make action buttons (Bayar) use a solid red style to match site buttons */
+    .btn-borrow {
+      background: #ff4d4f !important;
+      color: #fff !important;
+      border: none !important;
+      padding: 10px 16px !important;
+      border-radius: 8px !important;
+      cursor: pointer !important;
+      font-weight: 700 !important;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.08) !important;
+    }
+    .btn-borrow:hover { background: #e63b3f !important; }
+  </style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="profile-wrapper" onclick="toggleProfile()">
+    <div class="profile-avatar">👤</div>
+  </div>
+  <div class="profile-dropdown" id="profileDropdown">
+    <p class="profile-role">Member</p>
+    <p class="profile-email" id="profileEmail">email@mail.com</p>
+    <button class="btn-logout" onclick="logout()">Logout</button>
+  </div>
+</div>
+
+<div class="borrow-page">
+  <div class="borrow-card" style="width:900px">
+    <h2 class="borrow-title">Denda</h2>
+    <!-- summary pill removed -->
+    <p class="welcome-subtext">Lihat dan bayar denda peminjaman Anda</p>
+
+    <main class="content">
+      <div id="noData" style="display:none; text-align:center; padding:20px; color:#666;">Tidak ada denda saat ini 🎉</div>
+
+      <table id="finesTable" class="history-table" style="width:100%; display:none;">
+        <thead>
+          <tr>
+            <th>Judul Buku</th>
+            <th>Tanggal Pinjam</th>
+            <th>Tenggat Waktu</th>
+            <th>Denda Estimasi</th>
+            <th>Status</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="finesBody"></tbody>
+      </table>
+
+      <!-- debug output hidden in production -->
+
+      <div style="margin-top:22px; display:flex; justify-content:center;">
+        <button class="btn-back wide-btn" onclick="location.href='dashboard.html'">← Kembali ke Dashboard</button>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script>
+const API_URL = "http://127.0.0.1:8000/api";
+
+/* AUTH CHECK */
+const token = localStorage.getItem('token');
+const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+if (!token || !currentUser) location.href = 'login.html';
+
+// approval notification helpers
+let prevFinePaid = {};
+let notifiedPaid = new Set();
+
+document.getElementById('profileEmail').innerText = currentUser.email;
+
+function toggleProfile(){
+  const d = document.getElementById('profileDropdown');
+  d.style.display = d.style.display === 'block' ? 'none' : 'block';
+}
+
+document.addEventListener('click', function(e){ if(!e.target.closest('.topbar')) document.getElementById('profileDropdown').style.display = 'none'; });
+
+function logout(){ localStorage.removeItem('token'); localStorage.removeItem('currentUser'); location.href='login.html'; }
+
+function formatCurrency(v){ return 'Rp ' + Number(v).toLocaleString('id-ID'); }
+
+async function loadFines(){
+  try {
+    const res = await fetch(API_URL + '/transactions/fines', { headers: { 'Accept':'application/json', 'Authorization':'Bearer '+token } });
+    if (!res.ok) { alert('Gagal mengambil data denda'); return; }
+    const json = await res.json();
+
+    // normalize response to an array — try to find any array in the response object
+    function findArray(obj) {
+      if (!obj) return null;
+      if (Array.isArray(obj)) return obj;
+      if (typeof obj !== 'object') return null;
+      for (const k of Object.keys(obj)) {
+        try {
+          const res = findArray(obj[k]);
+          if (res) return res;
+        } catch(e) {}
+      }
+      return null;
+    }
+
+    let data = findArray(json) || [];
+
+    // show raw response in debug area for diagnosis
+      // debug output suppressed
+
+  const table = document.getElementById('finesTable');
+  const body = document.getElementById('finesBody');
+  const noData = document.getElementById('noData');
+
+  body.innerHTML = '';
+
+  if (data.length === 0) {
+    table.style.display = 'none';
+    noData.style.display = 'block';
+    return;
+  }
+
+  table.style.display = 'table';
+  noData.style.display = 'none';
+
+  data.forEach(trx => {
+    const tr = document.createElement('tr');
+
+    const title = trx.book ? trx.book.title : '—';
+    const borrowDateObj = trx.borrow_date ? new Date(trx.borrow_date) : null;
+    const borrow = borrowDateObj ? borrowDateObj.toISOString().split('T')[0] : '—';
+    const dueDateObj = trx.due_date ? new Date(trx.due_date) : null;
+    const due = dueDateObj ? dueDateObj.toISOString().split('T')[0] : '—';
+    const serverFine = trx.fine_amount || 0;
+    const paid = trx.fine_paid_at ? true : false;
+    // track current paid state to detect approvals
+    prevFinePaid[trx.id] = paid;
+    if (paid) notifiedPaid.add(trx.id);
+    const requested = trx.fine_payment_requested_at ? true : false;
+
+    // estimate: Rp 1000 per day overdue
+    let estimatedFine = 0;
+    if (dueDateObj) {
+      const today = new Date();
+      const msPerDay = 24 * 60 * 60 * 1000;
+      const diffDays = Math.floor((today - dueDateObj) / msPerDay);
+      if (diffDays > 0) estimatedFine = diffDays * 1000;
+    }
+
+    // debug log to help verify values in browser console
+      // debug log removed
+
+    const tdTitle = document.createElement('td'); tdTitle.innerText = title;
+    const tdBorrow = document.createElement('td'); tdBorrow.innerText = borrow;
+    const tdDue = document.createElement('td'); tdDue.innerText = due;
+    const tdFine = document.createElement('td');
+    // show estimated amount only (do not render server value)
+    const estHtml = `<div class="fine-amount">${formatCurrency(estimatedFine)}</div>`;
+    if (estimatedFine > 0) {
+      tdFine.innerHTML = estHtml;
+    } else {
+      tdFine.innerHTML = '<span class="fine-amount">Rp 0</span>';
+    }
+
+    const tdStatus = document.createElement('td');
+    if (paid) {
+      tdStatus.innerHTML = `<span class="badge-paid">Lunas</span>`;
+    } else if (requested) {
+      tdStatus.innerHTML = `<span class="badge-unpaid">Menunggu Persetujuan</span>`;
+    } else {
+      tdStatus.innerHTML = `<span class="badge-unpaid">Belum Dibayar</span>`;
+    }
+
+    const tdAction = document.createElement('td');
+    if (paid) {
+      tdAction.innerText = '-';
+    } else if (requested) {
+      const btn = document.createElement('button');
+      btn.className = 'btn-borrow';
+      btn.disabled = true;
+      btn.innerText = 'Permintaan Terkirim';
+      tdAction.appendChild(btn);
+    } else if (!paid && (serverFine > 0 || estimatedFine > 0)) {
+      const btn = document.createElement('button');
+      btn.className = 'btn-borrow';
+      btn.style.padding = '10px 16px';
+      btn.style.borderRadius = '8px';
+      btn.innerText = 'Bayar';
+      btn.onclick = () => payFineConfirm(trx.id, estimatedFine, btn);
+      tdAction.appendChild(btn);
+    } else {
+      tdAction.innerText = '-';
+    }
+
+    tr.appendChild(tdTitle);
+    tr.appendChild(tdBorrow);
+    tr.appendChild(tdDue);
+    tr.appendChild(tdFine);
+    tr.appendChild(tdStatus);
+    tr.appendChild(tdAction);
+
+    body.appendChild(tr);
+  });
+
+    // total summary removed — showing per-item estimated amounts only
+
+  } catch (err) {
+    console.error('loadFines error', err);
+    alert('Terjadi kesalahan saat mengambil denda. Cek konsol.');
+  }
+
+}
+
+// Payment confirmation using SweetAlert2 to match other modals
+async function payFineConfirm(id, amount, btn) {
+  const result = await Swal.fire({
+    title: 'Konfirmasi Pembayaran Denda',
+    text: 'Apakah Anda yakin ingin membayar denda ini?',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonColor: '#28a745',
+    cancelButtonColor: '#d33',
+    confirmButtonText: 'Ya, Bayar',
+    cancelButtonText: 'Batal',
+    html: `<p style="margin-top:8px">Jumlah: <strong style="color:#b12704">${formatCurrency(amount||0)}</strong></p>`
+  });
+
+  if (!result.isConfirmed) return;
+
+  if (btn) { btn.disabled = true; btn.innerText = 'Memproses...'; }
+
+  try {
+    const res = await fetch(API_URL + '/transactions/' + id + '/pay-fine', {
+      method: 'POST',
+      headers: { 'Accept':'application/json', 'Authorization':'Bearer '+token }
+    });
+    const j = await res.json().catch(()=>({}));
+    if (!res.ok) {
+      Swal.fire({ icon: 'error', title: 'Gagal', text: j.message || 'Gagal membayar denda' });
+      if (btn) { btn.disabled = false; btn.innerText = 'Bayar'; }
+      return;
+    }
+
+    Swal.fire({ icon: 'success', title: 'Sukses', text: j.message || 'Pembayaran denda berhasil', timer: 1800, showConfirmButton: false });
+    await loadFines();
+  } catch (e) {
+    console.error(e);
+    Swal.fire({ icon: 'error', title: 'Error', text: 'Tidak dapat terhubung ke server' });
+    if (btn) { btn.disabled = false; btn.innerText = 'Bayar'; }
+  }
+}
+
+// load on ready
+// Poll backend for approval changes and notify member when approved
+async function checkForApprovals() {
+  try {
+    const res = await fetch(API_URL + '/transactions/fines', { headers: { 'Accept':'application/json', 'Authorization':'Bearer '+token } });
+    if (!res.ok) return;
+    const json = await res.json();
+    function findArray(obj) {
+      if (!obj) return null;
+      if (Array.isArray(obj)) return obj;
+      if (typeof obj !== 'object') return null;
+      for (const k of Object.keys(obj)) {
+        try {
+          const res = findArray(obj[k]);
+          if (res) return res;
+        } catch(e) {}
+      }
+      return null;
+    }
+    const list = findArray(json) || [];
+    list.forEach(trx => {
+      const id = trx.id;
+      const paid = trx.fine_paid_at ? true : false;
+      const prev = !!prevFinePaid[id];
+      if (!prev && paid && !notifiedPaid.has(id)) {
+        Swal.fire({ icon: 'success', title: 'Pembayaran Disetujui', text: 'Pembayaran denda Anda telah disetujui oleh admin.' });
+        notifiedPaid.add(id);
+      }
+      prevFinePaid[id] = paid;
+    });
+  } catch (e) {
+    console.error('checkForApprovals', e);
+  }
+}
+
+// start polling every 8 seconds
+setInterval(checkForApprovals, 8000);
+// initial load
+checkForApprovals();
+loadFines();
+</script>
+
+</body>
+</html>
+
+<!-- removed custom modal; using SweetAlert2 for confirmations to match other pages -->

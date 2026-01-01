@@ -34,6 +34,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/transactions/{id}/return', [TransactionController::class, 'requestReturn']);
     // Lihat daftar pengembalian pending
     Route::get('/transactions/my', [TransactionController::class, 'myTransactions']);
+    // Daftar denda dan bayar denda
+    Route::get('/transactions/fines', [TransactionController::class, 'fines']);
+    Route::post('/transactions/{id}/pay-fine', [TransactionController::class, 'payFine']);
 
 
     // Logout (member & admin)
@@ -64,9 +67,14 @@ Route::middleware('auth:sanctum')->group(function () {
         // Konfirmasi / approve peminjaman
         Route::put('/transactions/{id}/approve', [TransactionController::class, 'approveBorrow']);
 
-        // Lihat daftar pengembalian pending
+        // Lihat daftar transaksi yang sedang dipinjam
         Route::get('/transactions/borrowed', [TransactionController::class, 'borrowed']);
-        
+
+        // ADMIN: lihat daftar denda (paid / unpaid)
+        Route::get('/transactions/fines', [TransactionController::class, 'adminFines']);
+        // ADMIN: tandai denda lunas
+        Route::put('/transactions/{id}/mark-fine-paid', [TransactionController::class, 'adminMarkFinePaid']);
+
         // Pengembalian buku
         Route::get('/transactions/return-pending', [TransactionController::class, 'pendingReturn']);
         Route::put('/transactions/{id}/approve-return', [TransactionController::class, 'approveReturn']);

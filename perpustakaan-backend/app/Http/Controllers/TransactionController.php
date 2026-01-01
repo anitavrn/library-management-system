@@ -17,7 +17,7 @@ class TransactionController extends Controller
     public function borrow(Request $request)
     {
         $data = $request->validate([
-            'api_book_id' => 'required|string',   
+            'api_book_id' => 'required|string',
             'title'       => 'required|string',
             'author'      => 'nullable|string',
         ]);
@@ -55,7 +55,7 @@ class TransactionController extends Controller
         ], 201);
     }
 
-   
+
     public function myTransactions(Request $request)
     {
         $list = Transaction::with(['book'])
@@ -66,6 +66,58 @@ class TransactionController extends Controller
         return response()->json([
             'message' => 'Riwayat peminjaman member',
             'data'    => $list
+        ], 200);
+    }
+
+    // GET /transactions/fines
+    // List transaksi member yang memiliki denda (belum dibayar)
+    public function fines(Request $request)
+    {
+        $list = Transaction::with(['book'])
+            ->where('user_id', $request->user()->id)
+            ->where('fine_amount', '>', 0)
+            ->whereNull('fine_paid_at')
+            ->orderBy('id', 'desc')
+            ->get();
+
+        return response()->json([
+            'message' => 'Daftar denda member',
+            'data' => $list
+        ], 200);
+    }
+
+    // POST /transactions/{id}/pay-fine
+    // Member mengirim permintaan pembayaran denda (menunggu persetujuan admin)
+    public function payFine(Request $request, $id)
+    {
+        $trx = Transaction::with(['book'])->find($id);
+
+        if (!$trx) {
+            return response()->json(['message' => 'Transaction not found'], 404);
+        }
+
+        // Pastikan transaksi milik user yang login
+        if ($trx->user_id !== $request->user()->id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        if ($trx->fine_amount <= 0) {
+            return response()->json(['message' => 'Tidak ada denda untuk transaksi ini'], 400);
+        }
+
+        if ($trx->fine_paid_at) {
+            return response()->json(['message' => 'Denda sudah dibayar'], 400);
+        }
+
+        if ($trx->fine_payment_requested_at) {
+            return response()->json(['message' => 'Permintaan pembayaran sudah dikirim, menunggu persetujuan admin'], 400);
+        }
+
+        $trx->update(['fine_payment_requested_at' => now()]);
+
+        return response()->json([
+            'message' => 'Permintaan pembayaran denda dikirim, tunggu persetujuan admin',
+            'data' => $trx->fresh(['book'])
         ], 200);
     }
 
@@ -143,6 +195,58 @@ class TransactionController extends Controller
         ], 200);
     }
 
+    // GET /admin/transactions/fines
+    // List all transactions that have fines (filterable by status=paid|unpaid|all)
+    public function adminFines(Request $request)
+    {
+        $status = $request->query('status', 'unpaid');
+
+        $q = Transaction::with(['user', 'book'])->where('fine_amount', '>', 0);
+
+        if ($status === 'unpaid') {
+            $q->whereNull('fine_paid_at');
+        } elseif ($status === 'paid') {
+            $q->whereNotNull('fine_paid_at');
+        }
+
+        $list = $q->orderBy('id', 'desc')->get();
+
+        return response()->json([
+            'message' => 'Daftar denda (admin)',
+            'data' => $list
+        ], 200);
+    }
+
+    // PUT /admin/transactions/{id}/mark-fine-paid
+    // Admin approves a payment request and marks fine as paid (sets fine_paid_at)
+    public function adminMarkFinePaid(Request $request, $id)
+    {
+        $trx = Transaction::with(['user', 'book'])->find($id);
+
+        if (!$trx) {
+            return response()->json(['message' => 'Transaction not found'], 404);
+        }
+
+        if ($trx->fine_amount <= 0) {
+            return response()->json(['message' => 'Tidak ada denda untuk transaksi ini'], 400);
+        }
+
+        if ($trx->fine_paid_at) {
+            return response()->json(['message' => 'Denda sudah dibayar sebelumnya'], 400);
+        }
+
+        if (!$trx->fine_payment_requested_at) {
+            return response()->json(['message' => 'Belum ada permintaan pembayaran dari member'], 400);
+        }
+
+        $trx->update(['fine_paid_at' => now()]);
+
+        return response()->json([
+            'message' => 'Denda disetujui dan ditandai lunas oleh admin',
+            'data' => $trx->fresh(['user', 'book'])
+        ], 200);
+    }
+
     // ======================
     // MEMBER - RETURN BOOK
     // ======================
@@ -152,7 +256,7 @@ class TransactionController extends Controller
     public function requestReturn(Request $request, $id)
     {
         $trx = Transaction::with(['book'])->find($id);
-        
+
         if (!$trx) {
             return response()->json(['message' => 'Transaksi tidak ditemukan'], 404);
         }
@@ -165,6 +269,23 @@ class TransactionController extends Controller
         // Hanya bisa return jika status borrowed
         if ($trx->status !== 'borrowed') {
             return response()->json(['message' => 'Buku tidak sedang dipinjam'], 400);
+        }
+
+        // Hitung denda estimasi sekarang — jika ada denda dan belum dibayar, tolak request
+        $fineAmount = 0;
+        if ($trx->due_date) {
+            $dueDate = \Carbon\Carbon::parse($trx->due_date);
+            $now = now();
+            if ($now->gt($dueDate)) {
+                $daysLate = $dueDate->diffInDays($now);
+                $fineAmount = $daysLate * 1000; // Rp 1000 per hari
+            }
+        }
+
+        if ($fineAmount > 0 && !$trx->fine_paid_at) {
+            return response()->json([
+                'message' => 'Ada denda sebesar Rp ' . number_format($fineAmount, 0, ',', '.') . ". Silakan bayar denda terlebih dahulu sebelum mengajukan pengembalian."
+            ], 400);
         }
 
         // Update status menjadi return_pending
@@ -200,7 +321,7 @@ class TransactionController extends Controller
     public function approveReturn(Request $request, $id)
     {
         $trx = Transaction::with(['book'])->find($id);
-        
+
         if (!$trx) {
             return response()->json(['message' => 'Transaction not found'], 404);
         }
@@ -214,7 +335,7 @@ class TransactionController extends Controller
         if ($trx->due_date) {
             $dueDate = \Carbon\Carbon::parse($trx->due_date);
             $returnDate = now();
-            
+
             if ($returnDate->gt($dueDate)) {
                 $daysLate = $dueDate->diffInDays($returnDate);
                 $fineAmount = $daysLate * 1000; // Rp 1000 per hari

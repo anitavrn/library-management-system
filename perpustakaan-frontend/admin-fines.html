@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <title>Manajemen Denda - Admin</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    .admin-wrapper { min-height:100vh; background: linear-gradient(135deg,#ffd1e8,#e0f0ff); padding:40px }
+    .admin-card { max-width:1200px; margin:0 auto; background:white; border-radius:16px; padding:30px; box-shadow:0 12px 30px rgba(0,0,0,0.15) }
+    .admin-title { text-align:center; color:#ff6fae; margin-bottom:18px }
+    .table-wrapper { overflow-x:auto }
+    .fines-table { width:100%; border-collapse:collapse; margin-top:20px }
+    .fines-table th { background:#ffe0f0; color:#ff5fa2; padding:12px; text-align:left; font-weight:600 }
+    .fines-table td { padding:12px; border-bottom:1px solid #eee }
+    .btn-mark-paid { padding:6px 12px; background:#ff5a50; color:white; border:none; border-radius:6px; cursor:pointer }
+    .btn-mark-paid:hover { background:#e6483f }
+    .badge-paid { display:inline-block;padding:6px 10px;border-radius:12px;background:#dff3e6;color:#116644;font-weight:600 }
+    .badge-unpaid { display:inline-block;padding:6px 10px;border-radius:12px;background:#fff6db;color:#7a5800;font-weight:600 }
+    .badge-pending { display:inline-block;padding:6px 10px;border-radius:12px;background:#e6f0ff;color:#004a8a;font-weight:600 }
+  </style>
+</head>
+<body>
+  <div class="admin-wrapper">
+    <div class="admin-card">
+      <button onclick="location.href='admin-dashboard.html'" style="border:none;background:transparent;color:#ff6fae;font-weight:700;cursor:pointer;display:inline-block;padding:0 6px 1px 6px;border-bottom:1px solid #ff6fae;border-radius:0;margin-bottom:6px;line-height:1;text-decoration:none;font-size:16px">← Kembali ke Dashboard</button>
+      <h2 class="admin-title">Daftar Denda</h2>
+
+      <!-- Status filter removed; status shown in table only -->
+
+      <div class="table-wrapper">
+        <table class="fines-table">
+          <thead>
+            <tr>
+              <th>Member</th>
+              <th>Judul Buku</th>
+              <th>Tanggal Pinjam</th>
+              <th>Tenggat Waktu</th>
+              <th>Denda</th>
+              <th>Status</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="finesBody">
+            <tr><td colspan="7" style="text-align:center">Memuat...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+<script>
+const API_URL = 'http://127.0.0.1:8000/api';
+const ADMIN_TOKEN_KEY = 'adminToken';
+const token = localStorage.getItem(ADMIN_TOKEN_KEY);
+if (!token) window.location.replace('admin-login.html');
+
+function fmt(d){ return d ? String(d).substring(0,10) : '-'; }
+function esc(s){ return String(s||'-').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+function formatCurrency(amount){ return new Intl.NumberFormat('id-ID',{ style:'currency', currency:'IDR', minimumFractionDigits:0 }).format(amount); }
+// calculate estimated fine: Rp 1000 per day overdue
+function calculateFine(dueDate) {
+  if (!dueDate) return 0;
+  const due = new Date(dueDate);
+  const today = new Date();
+  due.setHours(0,0,0,0);
+  today.setHours(0,0,0,0);
+  if (today <= due) return 0;
+  const daysLate = Math.floor((today - due) / (1000 * 60 * 60 * 24));
+  return daysLate * 1000;
+}
+
+async function loadFines(){
+  // always fetch all fines; status is shown in the table
+  const url = `${API_URL}/admin/transactions/fines?status=all`;
+  const tbody = document.getElementById('finesBody');
+  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center">Memuat...</td></tr>';
+
+  try {
+    const res = await fetch(url, { headers: { Accept:'application/json', Authorization:'Bearer '+token } });
+    const j = await res.json();
+    if (!res.ok) { tbody.innerHTML = `<tr><td colspan="7" style="text-align:center">Gagal: ${j.message||res.status}</td></tr>`; return; }
+    const list = j.data || [];
+    if (list.length===0) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center">Tidak ada data</td></tr>'; return; }
+
+    tbody.innerHTML = list.map(trx => {
+      const member = esc(trx.user?.username || trx.user?.full_name || trx.user?.email);
+      const title = esc(trx.book?.title || '-');
+      const borrow = fmt(trx.borrow_date);
+      const due = fmt(trx.due_date);
+      const serverFine = Number(trx.fine_amount || 0);
+      const paid = trx.fine_paid_at ? true : false;
+      const requested = trx.fine_payment_requested_at ? true : false;
+      const estimate = calculateFine(trx.due_date);
+      // For unpaid transactions always show the client-side estimate (Rp1000/day)
+      const fine = paid ? serverFine : estimate;
+      let statusHtml = '';
+      let action = '-';
+      if (paid) {
+        statusHtml = '<span class="badge-paid">Lunas</span>';
+        action = '-';
+      } else if (requested) {
+        statusHtml = '<span class="badge-pending">Menunggu Persetujuan</span>';
+        action = `<button class="btn-mark-paid" onclick="markPaid(${trx.id}, this)">Setujui</button>`;
+      } else {
+        statusHtml = '<span class="badge-unpaid">Belum Dibayar</span>';
+        action = '-';
+      }
+
+      return `
+        <tr>
+          <td><b>${member}</b><br><small>${esc(trx.user?.email||'')}</small></td>
+          <td>${title}</td>
+          <td>${borrow}</td>
+          <td>${due}</td>
+          <td>${formatCurrency(fine)}</td>
+          <td>${statusHtml}</td>
+          <td>${action}</td>
+        </tr>
+      `;
+    }).join('');
+
+  } catch (e) {
+    console.error(e);
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center">Tidak bisa terhubung ke server</td></tr>';
+  }
+}
+
+async function markPaid(id, btn){
+  const result = await Swal.fire({
+    title: 'Setujui Pembayaran Denda',
+    text: 'Apakah Anda yakin ingin menyetujui dan menandai denda ini sebagai lunas?',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonColor: '#28a745',
+    cancelButtonColor: '#d33',
+    confirmButtonText: 'Ya, Setujui',
+    cancelButtonText: 'Batal'
+  });
+
+  if (!result.isConfirmed) return;
+
+  if (btn) { btn.disabled = true; btn.innerText = 'Memproses...'; }
+
+  try {
+    const res = await fetch(`${API_URL}/admin/transactions/${id}/mark-fine-paid`, { method:'PUT', headers:{ Accept:'application/json', Authorization:'Bearer '+token } });
+    const j = await res.json().catch(()=>({}));
+    if (!res.ok) {
+      Swal.fire({ icon:'error', title:'Gagal', text: j.message || 'Gagal memproses permintaan' });
+      if (btn) { btn.disabled = false; btn.innerText = 'Setujui'; }
+      return;
+    }
+
+    Swal.fire({ icon: 'success', title: 'Berhasil', text: j.message || 'Denda disetujui', timer: 1800, showConfirmButton: false });
+    await loadFines();
+  } catch(e){
+    console.error(e);
+    Swal.fire({ icon:'error', title:'Error', text:'Tidak dapat terhubung ke server' });
+    if (btn) { btn.disabled = false; btn.innerText = 'Setujui'; }
+  }
+}
+
+loadFines();
+</script>
+</body>
+</html>

@@ -261,10 +261,19 @@
 
                 let actionBtn = '';
                 if (trx.status === 'borrowed') {
-                  actionBtn = `<button class="btn-return" onclick="returnBook(${trx.id})">Kembalikan Buku</button>`;
+                  // jika estimasi denda > 0 dan belum dibayar, jangan izinkan pengembalian
+                  if (fine > 0 && !trx.fine_paid_at) {
+                    // jika user sudah mengirim permintaan pembayaran, tunjukkan status menunggu
+                    if (trx.fine_payment_requested_at) {
+                      actionBtn = '<button class="btn-return" disabled>Permintaan Terkirim</button>';
+                    } else {
+                      actionBtn = '<button class="btn-return" disabled>Bayar Denda Terlebih Dahulu</button>';
+                    }
+                  } else {
+                    actionBtn = `<button class="btn-return" onclick="returnBook(${trx.id})">Kembalikan Buku</button>`;
+                  }
                 } else if (trx.status === 'return_pending') {
-                  actionBtn =
-                    '<button class="btn-return" disabled>Menunggu</button>';
+                  actionBtn = '<button class="btn-return" disabled>Menunggu</button>';
                 } else if (trx.status === 'returned') {
                   actionBtn = '<span style="color: #666;">-</span>';
                 }
