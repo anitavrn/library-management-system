@@ -15,45 +15,47 @@ class TransactionController extends Controller
     // POST /transactions
     // Member request borrow => status pending
     public function borrow(Request $request)
-    {
-        $data = $request->validate([
-            'api_book_id' => 'required|string',
-            'title'       => 'required|string',
-            'author'      => 'nullable|string',
+{
+    $data = $request->validate([
+        'api_book_id'  => 'required|string',
+        'title'        => 'required|string',
+        'author'       => 'nullable|string',
+        'borrow_date'  => 'required|date',
+        'due_date'     => 'required|date|after_or_equal:borrow_date',
+    ]);
+
+    // cari buku internal berdasarkan api_book_id
+    $book = Book::where('api_book_id', $data['api_book_id'])->first();
+
+    if (!$book) {
+        $book = Book::create([
+            'api_book_id' => $data['api_book_id'],
+            'title'       => $data['title'],
+            'author'      => $data['author'] ?? null,
+            'stock'       => 0,
+            'location'    => null,
         ]);
-
-        // cari buku internal berdasarkan api_book_id
-        $book = Book::where('api_book_id', $data['api_book_id'])->first();
-
-        // otomatis (stok 0, nanti admin atur)
-        if (!$book) {
-            $book = Book::create([
-                'api_book_id' => $data['api_book_id'],
-                'title'       => $data['title'],
-                'author'      => $data['author'] ?? null,
-                'stock'       => 0,
-                'location'    => null,
-            ]);
-        } else {
-            // update title/author kalau berubah dari API
-            $book->update([
-                'title'  => $data['title'],
-                'author' => $data['author'] ?? $book->author,
-            ]);
-        }
-
-        // buat transaksi pending
-        $trx = Transaction::create([
-            'user_id' => $request->user()->id,
-            'book_id' => $book->id,
-            'status'  => 'pending',
+    } else {
+        $book->update([
+            'title'  => $data['title'],
+            'author' => $data['author'] ?? $book->author,
         ]);
-
-        return response()->json([
-            'message' => 'Request peminjaman dikirim (menunggu konfirmasi librarian)',
-            'data'    => $trx->load(['book'])
-        ], 201);
     }
+
+    // simpan tanggal dari member (bukan dari admin)
+    $trx = Transaction::create([
+        'user_id'     => $request->user()->id,
+        'book_id'     => $book->id,
+        'status'      => 'pending',
+        'borrow_date' => $data['borrow_date'],
+        'due_date'    => $data['due_date'],
+    ]);
+
+    return response()->json([
+        'message' => 'Request peminjaman dikirim (menunggu konfirmasi librarian)',
+        'data'    => $trx->load(['book'])
+    ], 201);
+}
 
 
     public function myTransactions(Request $request)
@@ -140,11 +142,11 @@ class TransactionController extends Controller
             foreach ($borrowedBooks as $transaction) {
                 if ($transaction->book && $transaction->book->api_book_id) {
                     $apiUrl = "https://openlibrary.org/works/{$transaction->book->api_book_id}.json";
-                    
+
                     try {
                         $response = file_get_contents($apiUrl);
                         $bookData = json_decode($response, true);
-                        
+
                         if (isset($bookData['subjects'])) {
                             foreach (array_slice($bookData['subjects'], 0, 3) as $subject) {
                                 $subjects[] = $subject;
@@ -170,11 +172,11 @@ class TransactionController extends Controller
             $recommendations = [];
             foreach ($topSubjects as $subject) {
                 $searchUrl = "https://openlibrary.org/subjects/" . urlencode(strtolower($subject)) . ".json?limit=5";
-                
+
                 try {
                     $response = file_get_contents($searchUrl);
                     $data = json_decode($response, true);
-                    
+
                     if (isset($data['works'])) {
                         foreach ($data['works'] as $work) {
                             $recommendations[] = [
@@ -258,13 +260,13 @@ class TransactionController extends Controller
             ], 400);
         }
 
-        $days = (int) $request->query('days', 7);
-        if ($days < 1) $days = 7;
+        // $days = (int) $request->query('days', 7);
+        // if ($days < 1) $days = 7;
 
         $trx->update([
             'status'      => 'borrowed',
-            'borrow_date' => now(),
-            'due_date'    => now()->addDays($days),
+            // 'borrow_date' => now(),
+            // 'due_date'    => now()->addDays($days),
             'approved_by' => $request->user()->id,
         ]);
 
