@@ -49,7 +49,6 @@ window.pinjam = function () {
   const params = new URLSearchParams(window.location.search);
   const api_book_id = params.get("id"); // contoh: OL505944W
   const author = params.get("author");
-
   const title = document.getElementById("title")?.innerText;
 
   if (!api_book_id || !title) {

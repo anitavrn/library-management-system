@@ -1,136 +1,137 @@
 <!DOCTYPE html>
 <html lang="id">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Riwayat Peminjaman</title>
-    <link rel="stylesheet" href="css/style.css" />
-  </head>
-  <body>
-    <div class="borrow-page">
-      <div class="borrow-card" style="width: 850px">
-        <h2 class="borrow-title">Riwayat Peminjaman</h2>
 
-        <table class="history-table">
-          <thead>
-            <tr>
-              <th>Judul Buku</th>
-              <th>Tanggal Pinjam</th>
-              <th>Tanggal Kembali</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody id="historyBody">
-            <tr>
-              <td colspan="4" style="text-align: center">Memuat data...</td>
-            </tr>
-          </tbody>
-        </table>
+<head>
+  <meta charset="UTF-8" />
+  <title>Riwayat Peminjaman</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
 
-        <div class="action-row">
-          <button
-            class="btn-back"
-            onclick="window.location.href='dashboard.html'"
-          >
-            ← Kembali ke Dashboard
-          </button>
-        </div>
+<body>
+  <div class="borrow-page">
+    <div class="borrow-card" style="width: 850px">
+      <h2 class="borrow-title">Riwayat Peminjaman</h2>
+
+      <table class="history-table">
+        <thead>
+          <tr>
+            <th>Judul Buku</th>
+            <th>Tanggal Pinjam</th>
+            <th>Tanggal Kembali</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="historyBody">
+          <tr>
+            <td colspan="4" style="text-align: center">Memuat data...</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="action-row">
+        <button class="btn-back" onclick="window.location.href='dashboard.html'">
+          ← Kembali ke Dashboard
+        </button>
       </div>
     </div>
+  </div>
 
-    <script>
-      /* =========================
-   CONFIG
+  <script>
+    /* =========================
+ CONFIG
 ========================= */
-      const API_URL = 'http://127.0.0.1:8000/api';
-      const TOKEN_KEY = 'token'; // token member
-      const USER_KEY = 'currentUser'; // user member
+    const API_URL = 'http://127.0.0.1:8000/api';
+    const TOKEN_KEY = 'token'; // token member
+    const USER_KEY = 'currentUser'; // user member
 
-      /* =========================
-   AUTH CHECK
+    /* =========================
+ AUTH CHECK
 ========================= */
-      const token = localStorage.getItem(TOKEN_KEY);
-      const currentUser = localStorage.getItem(USER_KEY);
+    const token = localStorage.getItem(TOKEN_KEY);
+    const currentUser = localStorage.getItem(USER_KEY);
 
-      if (!token || !currentUser) {
-        window.location.href = 'login.html';
+    if (!token || !currentUser) {
+      window.location.href = 'login.html';
+    }
+
+    /* =========================
+ STATUS LABEL
+========================= */
+    function statusLabel(status) {
+      switch (status) {
+        case 'pending':
+          return 'Menunggu Konfirmasi Peminjaman';
+        case 'borrowed':
+          return 'Dipinjam';
+        case 'return_pending':
+          return 'Menunggu Konfirmasi Pengembalian';
+        case 'returned':
+          return 'Dikembalikan';
+        default:
+          return status || '-';
+      }
+    }
+
+    function fmtDate(dt) {
+      if (!dt) return '-';
+      return String(dt).substring(0, 10); // YYYY-MM-DD
+    }
+
+    function displayReturnOrDue(trx) {
+      // pending, borrowed, return_pending → tampilkan due_date yang dipilih member
+      if (trx.status === 'pending' || trx.status === 'borrowed' || trx.status === 'return_pending') {
+        return fmtDate(trx.due_date);
       }
 
-      /* =========================
-   STATUS LABEL
+      // returned → tampilkan return_date yang asli (tanggal benar-benar kembali)
+      if (trx.status === 'returned') {
+        return fmtDate(trx.return_date);
+      }
+
+      return '-';
+    }
+
+    /* =========================
+ LOAD HISTORY (BACKEND)
 ========================= */
-      function statusLabel(status) {
-        switch (status) {
-          case 'pending':
-            return 'Menunggu Konfirmasi Peminjaman';
-          case 'borrowed':
-            return 'Dipinjam';
-          case 'return_pending':
-            return 'Menunggu Konfirmasi Pengembalian';
-          case 'returned':
-            return 'Dikembalikan';
-          default:
-            return status || '-';
-        }
-      }
+    const historyBody = document.getElementById('historyBody');
 
-      function fmtDate(dt) {
-        if (!dt) return '-';
-        return String(dt).substring(0, 10); // YYYY-MM-DD
-      }
-
-      /* ✅ INTI FIX: tentukan tanggal yang ditampilkan */
-      function displayReturnOrDue(trx) {
-        // kalau masih dipinjam, yang penting adalah due_date (jatuh tempo)
-        if (trx.status === 'borrowed') return fmtDate(trx.due_date);
-
-        // kalau sudah dikembalikan, tampilkan return_date benerannya
-        if (trx.status === 'returned') return fmtDate(trx.return_date);
-
-        // pending / return_pending belum ada tanggal kembali yang pasti
-        return '-';
-      }
-
-      /* =========================
-   LOAD HISTORY (BACKEND)
-========================= */
-      const historyBody = document.getElementById('historyBody');
-
-      fetch(`${API_URL}/transactions/my`, {
-        headers: {
-          Accept: 'application/json',
-          Authorization: 'Bearer ' + token,
-        },
+    fetch(`${API_URL}/transactions/my`, {
+      headers: {
+        Accept: 'application/json',
+        Authorization: 'Bearer ' + token,
+      },
+    })
+      .then(async (res) => {
+        const data = await res.json();
+        return { status: res.status, data };
       })
-        .then(async (res) => {
-          const data = await res.json();
-          return { status: res.status, data };
-        })
-        .then(({ status, data }) => {
-          if (status !== 200) {
-            historyBody.innerHTML = `
+      .then(({ status, data }) => {
+        if (status !== 200) {
+          historyBody.innerHTML = `
       <tr><td colspan="4" style="text-align:center">
         Gagal memuat riwayat: ${data.message || 'Error'}
       </td></tr>
     `;
-            return;
-          }
+          return;
+        }
 
-          const list = data.data || [];
+        const list = data.data || [];
 
-          if (list.length === 0) {
-            historyBody.innerHTML = `
+        if (list.length === 0) {
+          historyBody.innerHTML = `
       <tr>
         <td colspan="4" style="text-align:center">
           Belum ada riwayat peminjaman
         </td>
       </tr>
     `;
-            return;
-          }
+          return;
+        }
 
-          historyBody.innerHTML = list
-            .map(
-              (trx) => `
+        historyBody.innerHTML = list
+          .map(
+            (trx) => `
     <tr>
       <td>${trx.book?.title || '-'}</td>
       <td>${fmtDate(trx.borrow_date)}</td>
@@ -138,16 +139,17 @@
       <td>${statusLabel(trx.status)}</td>
     </tr>
   `
-            )
-            .join('');
-        })
-        .catch(() => {
-          historyBody.innerHTML = `
+          )
+          .join('');
+      })
+      .catch(() => {
+        historyBody.innerHTML = `
     <tr><td colspan="4" style="text-align:center">
       Tidak bisa terhubung ke backend.
     </td></tr>
   `;
-        });
-    </script>
-  </body>
+      });
+  </script>
+</body>
+
 </html>
