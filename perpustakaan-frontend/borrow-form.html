@@ -100,15 +100,25 @@
           const data = await res.json();
           return { status: res.status, data };
         })
+        // .then(({ status, data }) => {
+        //   if (status !== 201) {
+        //     Swal.fire({
+        //       icon: "error",
+        //       title: "Gagal meminjam",
+        //       text: data.message || "Request peminjaman gagal."
+        //     });
+        //     return;
+        //   }
         .then(({ status, data }) => {
           if (status !== 201) {
             Swal.fire({
-              icon: "error",
-              title: "Gagal meminjam",
-              text: data.message || "Request peminjaman gagal."
+              icon: "warning",
+              title: "Buku tidak tersedia",
+              text: data.message || "Buku belum tersedia atau stok habis."
             });
             return;
           }
+
 
           // bersihkan cache book yang dipinjam supaya tidak nyangkut
           localStorage.removeItem("borrowBook");

@@ -15,47 +15,52 @@ class TransactionController extends Controller
     // POST /transactions
     // Member request borrow => status pending
     public function borrow(Request $request)
-{
-    $data = $request->validate([
-        'api_book_id'  => 'required|string',
-        'title'        => 'required|string',
-        'author'       => 'nullable|string',
-        'borrow_date'  => 'required|date',
-        'due_date'     => 'required|date|after_or_equal:borrow_date',
-    ]);
-
-    // cari buku internal berdasarkan api_book_id
-    $book = Book::where('api_book_id', $data['api_book_id'])->first();
-
-    if (!$book) {
-        $book = Book::create([
-            'api_book_id' => $data['api_book_id'],
-            'title'       => $data['title'],
-            'author'      => $data['author'] ?? null,
-            'stock'       => 0,
-            'location'    => null,
+    {
+        $data = $request->validate([
+            'api_book_id'  => 'required|string',
+            'title'        => 'required|string',
+            'author'       => 'nullable|string',
+            'borrow_date'  => 'required|date|date_equals:today',
+            'due_date'     => 'required|date|after_or_equal:borrow_date',
         ]);
-    } else {
+
+        // cari buku internal berdasarkan api_book_id
+        $book = Book::where('api_book_id', $data['api_book_id'])->first();
+
+        // kalau belum ada di kelola buku, tolak
+        if (!$book) {
+            return response()->json([
+                'message' => 'Buku belum tersedia di perpustakaan. Silakan hubungi librarian.'
+            ], 400);
+        }
+
+        // ✅ cek stok harus berlaku untuk SEMUA kondisi (baik book ada / tidak)
+        if ($book->stock < 1) {
+            return response()->json([
+                'message' => 'Stok buku habis. Tidak bisa melakukan peminjaman.'
+            ], 400);
+        }
+
+        // optional: update title/author biar sinkron (kalau kamu mau)
         $book->update([
             'title'  => $data['title'],
             'author' => $data['author'] ?? $book->author,
         ]);
+
+        // buat transaksi pending
+        $trx = Transaction::create([
+            'user_id'     => $request->user()->id,
+            'book_id'     => $book->id,
+            'status'      => 'pending',
+            'borrow_date' => $data['borrow_date'],
+            'due_date'    => $data['due_date'],
+        ]);
+
+        return response()->json([
+            'message' => 'Request peminjaman dikirim (menunggu konfirmasi librarian)',
+            'data'    => $trx->load(['book'])
+        ], 201);
     }
-
-    // simpan tanggal dari member (bukan dari admin)
-    $trx = Transaction::create([
-        'user_id'     => $request->user()->id,
-        'book_id'     => $book->id,
-        'status'      => 'pending',
-        'borrow_date' => $data['borrow_date'],
-        'due_date'    => $data['due_date'],
-    ]);
-
-    return response()->json([
-        'message' => 'Request peminjaman dikirim (menunggu konfirmasi librarian)',
-        'data'    => $trx->load(['book'])
-    ], 201);
-}
 
 
     public function myTransactions(Request $request)
@@ -210,7 +215,6 @@ class TransactionController extends Controller
                 'subjects' => $topSubjects,
                 'data' => $uniqueRecommendations
             ], 200);
-
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Gagal mengambil rekomendasi',
