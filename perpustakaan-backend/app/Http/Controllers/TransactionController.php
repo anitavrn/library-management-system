@@ -121,6 +121,102 @@ class TransactionController extends Controller
         ], 200);
     }
 
+    // GET /transactions/recommendations
+    // Get book recommendations based on user's borrowing history
+    public function recommendations(Request $request)
+    {
+        try {
+            // Get user's most borrowed books
+            $borrowedBooks = Transaction::with(['book'])
+                ->where('user_id', $request->user()->id)
+                ->whereIn('status', ['borrowed', 'returned'])
+                ->whereNotNull('book_id')
+                ->latest()
+                ->take(5)
+                ->get();
+
+            // Collect subjects from borrowed books using Open Library API
+            $subjects = [];
+            foreach ($borrowedBooks as $transaction) {
+                if ($transaction->book && $transaction->book->api_book_id) {
+                    $apiUrl = "https://openlibrary.org/works/{$transaction->book->api_book_id}.json";
+                    
+                    try {
+                        $response = file_get_contents($apiUrl);
+                        $bookData = json_decode($response, true);
+                        
+                        if (isset($bookData['subjects'])) {
+                            foreach (array_slice($bookData['subjects'], 0, 3) as $subject) {
+                                $subjects[] = $subject;
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        continue;
+                    }
+                }
+            }
+
+            // Get most common subjects
+            $subjectCounts = array_count_values($subjects);
+            arsort($subjectCounts);
+            $topSubjects = array_slice(array_keys($subjectCounts), 0, 3);
+
+            // If no subjects found, use default genres
+            if (empty($topSubjects)) {
+                $topSubjects = ['fiction', 'science', 'history'];
+            }
+
+            // Fetch recommendations from Open Library based on top subjects
+            $recommendations = [];
+            foreach ($topSubjects as $subject) {
+                $searchUrl = "https://openlibrary.org/subjects/" . urlencode(strtolower($subject)) . ".json?limit=5";
+                
+                try {
+                    $response = file_get_contents($searchUrl);
+                    $data = json_decode($response, true);
+                    
+                    if (isset($data['works'])) {
+                        foreach ($data['works'] as $work) {
+                            $recommendations[] = [
+                                'api_book_id' => str_replace('/works/', '', $work['key']),
+                                'title' => $work['title'] ?? 'Unknown',
+                                'author' => $work['authors'][0]['name'] ?? 'Unknown',
+                                'subject' => $subject,
+                                'cover_id' => $work['cover_id'] ?? null
+                            ];
+                        }
+                    }
+                } catch (\Exception $e) {
+                    continue;
+                }
+            }
+
+            // Remove duplicates and limit to 10
+            $uniqueRecommendations = [];
+            $seen = [];
+            foreach ($recommendations as $book) {
+                $key = $book['api_book_id'];
+                if (!isset($seen[$key])) {
+                    $seen[$key] = true;
+                    $uniqueRecommendations[] = $book;
+                }
+                if (count($uniqueRecommendations) >= 10) break;
+            }
+
+            return response()->json([
+                'message' => 'Rekomendasi buku berdasarkan riwayat peminjaman Anda',
+                'subjects' => $topSubjects,
+                'data' => $uniqueRecommendations
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Gagal mengambil rekomendasi',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     // ======================
     // ADMIN (LIBRARIAN)
     // ======================

@@ -1,104 +1,201 @@
 <!DOCTYPE html>
 <html lang="id">
-<head>
-  <meta charset="UTF-8">
-  <title>Dashboard Member</title>
-  <link rel="stylesheet" href="css/style.css">
-</head>
-<body>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Dashboard Member</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <!-- ================= TOP BAR ================= -->
+    <div class="topbar">
+      <div class="profile-wrapper" onclick="toggleProfile()">
+        <div class="profile-avatar">👤</div>
+      </div>
 
-<!-- ================= TOP BAR ================= -->
-<div class="topbar">
-  <div class="profile-wrapper" onclick="toggleProfile()">
-    <div class="profile-avatar">👤</div>
-  </div>
-
-  <!-- PROFILE DROPDOWN -->
-  <div class="profile-dropdown" id="profileDropdown">
-    <p class="profile-role">Member</p>
-    <p class="profile-email" id="profileEmail">email@mail.com</p>
-    <button class="btn-logout" onclick="logout()">Logout</button>
-  </div>
-</div>
-
-<!-- ================= DASHBOARD ================= -->
-<div class="dashboard-wrapper">
-
-  <header class="dashboard-header">
-  <h1>Dashboard Member</h1>
-  <p id="welcomeName" class="welcome-name"></p>
-  <p class="welcome-subtext">
-    Selamat datang di Sistem Perpustakaan 📚
-  </p>
-  </header>
-
-  <div class="dashboard-cards">
-
-    <div class="dashboard-card" onclick="location.href='books.html'">
-      <span class="icon">📚</span>
-      <h3>Cari Buku</h3>
-      <p>Mencari dan melihat katalog buku</p>
+      <!-- PROFILE DROPDOWN -->
+      <div class="profile-dropdown" id="profileDropdown">
+        <p class="profile-role">Member</p>
+        <p class="profile-email" id="profileEmail">email@mail.com</p>
+        <button class="btn-logout" onclick="logout()">Logout</button>
+      </div>
     </div>
 
-    <div class="dashboard-card" onclick="location.href='borrow-history.html'">
-      <span class="icon">📖</span>
-      <h3>Riwayat Peminjaman</h3>
-      <p>Melihat status dan histori peminjaman</p>
+    <!-- ================= DASHBOARD ================= -->
+    <div class="dashboard-wrapper">
+      <header class="dashboard-header">
+        <h1>Dashboard Member</h1>
+        <p id="welcomeName" class="welcome-name"></p>
+        <p class="welcome-subtext">Selamat datang di Sistem Perpustakaan 📚</p>
+      </header>
+
+      <div class="dashboard-cards">
+        <div class="dashboard-card" onclick="location.href='books.html'">
+          <span class="icon">📚</span>
+          <h3>Cari Buku</h3>
+          <p>Mencari dan melihat katalog buku</p>
+        </div>
+
+        <div
+          class="dashboard-card"
+          onclick="location.href='borrow-history.html'"
+        >
+          <span class="icon">📖</span>
+          <h3>Riwayat Peminjaman</h3>
+          <p>Melihat status dan histori peminjaman</p>
+        </div>
+
+        <div class="dashboard-card" onclick="location.href='return.html'">
+          <span class="icon">🔄</span>
+          <h3>Pengembalian Buku</h3>
+          <p>Ajukan pengembalian buku</p>
+        </div>
+
+        <div class="dashboard-card" onclick="location.href='fine.html'">
+          <span class="icon">💰</span>
+          <h3>Denda</h3>
+          <p>Melihat dan membayar denda</p>
+        </div>
+      </div>
+
+      <!-- ================= REKOMENDASI BUKU ================= -->
+      <section
+        class="recommendations-section"
+        id="recommendationsSection"
+        style="margin-top: 40px"
+      >
+        <h2 style="text-align: center; color: #ff5fa2; margin-bottom: 8px">
+          📚 Rekomendasi Buku untuk Anda
+        </h2>
+        <p style="text-align: center; color: #666; margin-bottom: 24px">
+          Berdasarkan riwayat peminjaman Anda
+        </p>
+
+        <div
+          id="recommendationsLoading"
+          style="text-align: center; padding: 20px; color: #666"
+        >
+          Memuat rekomendasi...
+        </div>
+
+        <div
+          id="recommendationsGrid"
+          class="recommendations-grid"
+          style="display: none"
+        >
+          <!-- Recommendations will be loaded here -->
+        </div>
+
+        <div
+          id="recommendationsError"
+          style="display: none; text-align: center; padding: 20px; color: #999"
+        >
+          Belum ada rekomendasi. Pinjam buku untuk mendapatkan rekomendasi!
+        </div>
+      </section>
     </div>
 
-    <div class="dashboard-card" onclick="location.href='return.html'">
-      <span class="icon">🔄</span>
-      <h3>Pengembalian Buku</h3>
-      <p>Ajukan pengembalian buku</p>
-    </div>
+    <!-- ================= SCRIPT ================= -->
+    <script>
+      /* ================= AUTH CHECK (ANTI KEDIP) ================= */
+      const token = localStorage.getItem('token');
+      const currentUser = JSON.parse(localStorage.getItem('currentUser'));
 
-    <div class="dashboard-card" onclick="location.href='fine.html'">
-      <span class="icon">💰</span>
-      <h3>Denda</h3>
-      <p>Melihat dan membayar denda</p>
-    </div>
+      if (!token || !currentUser) {
+        window.location.href = 'login.html';
+      }
 
-  </div>
-</div>
+      /* ================= TAMPILKAN USER ================= */
+      document.getElementById(
+        'welcomeName'
+      ).innerText = `Hai, ${currentUser.name} 👋`;
 
-<!-- ================= SCRIPT ================= -->
-<script>
-/* ================= AUTH CHECK (ANTI KEDIP) ================= */
-const token = localStorage.getItem("token");
-const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+      document.getElementById('profileEmail').innerText = currentUser.email;
 
-if (!token || !currentUser) {
-  window.location.href = "login.html";
-}
+      /* ================= DROPDOWN ================= */
+      function toggleProfile() {
+        const dropdown = document.getElementById('profileDropdown');
+        dropdown.style.display =
+          dropdown.style.display === 'block' ? 'none' : 'block';
+      }
 
-/* ================= TAMPILKAN USER ================= */
-document.getElementById("welcomeName").innerText =
-  `Hai, ${currentUser.name} 👋`;
+      /* Klik luar menutup dropdown */
+      document.addEventListener('click', function (e) {
+        if (!e.target.closest('.topbar')) {
+          document.getElementById('profileDropdown').style.display = 'none';
+        }
+      });
 
-document.getElementById("profileEmail").innerText =
-  currentUser.email;
+      /* ================= LOGOUT ================= */
+      function logout() {
+        localStorage.removeItem('token');
+        localStorage.removeItem('currentUser');
+        window.location.href = 'login.html';
+      }
 
-/* ================= DROPDOWN ================= */
-function toggleProfile() {
-  const dropdown = document.getElementById("profileDropdown");
-  dropdown.style.display =
-    dropdown.style.display === "block" ? "none" : "block";
-}
+      /* ================= LOAD RECOMMENDATIONS ================= */
+      const API_URL = 'http://127.0.0.1:8000/api';
 
-/* Klik luar menutup dropdown */
-document.addEventListener("click", function (e) {
-  if (!e.target.closest(".topbar")) {
-    document.getElementById("profileDropdown").style.display = "none";
-  }
-});
+      async function loadRecommendations() {
+        const loadingEl = document.getElementById('recommendationsLoading');
+        const gridEl = document.getElementById('recommendationsGrid');
+        const errorEl = document.getElementById('recommendationsError');
 
-/* ================= LOGOUT ================= */
-function logout() {
-  localStorage.removeItem("token");
-  localStorage.removeItem("currentUser");
-  window.location.href = "login.html";
-}
-</script>
+        try {
+          const response = await fetch(
+            `${API_URL}/transactions/recommendations`,
+            {
+              headers: {
+                Accept: 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
 
-</body>
+          const result = await response.json();
+
+          loadingEl.style.display = 'none';
+
+          if (!response.ok || !result.data || result.data.length === 0) {
+            errorEl.style.display = 'block';
+            return;
+          }
+
+          gridEl.style.display = 'grid';
+          gridEl.innerHTML = '';
+
+          result.data.forEach((book) => {
+            const coverUrl = book.cover_id
+              ? `https://covers.openlibrary.org/b/id/${book.cover_id}-M.jpg`
+              : 'https://via.placeholder.com/180x270/ff5fa2/ffffff?text=No+Cover';
+
+            const bookCard = document.createElement('div');
+            bookCard.className = 'recommendation-card';
+            bookCard.onclick = () => {
+              window.location.href = `book-detail.html?id=${
+                book.api_book_id
+              }&author=${encodeURIComponent(book.author)}`;
+            };
+
+            bookCard.innerHTML = `
+              <img src="${coverUrl}" alt="${book.title}" class="rec-book-cover" onerror="this.src='https://via.placeholder.com/180x270/ff5fa2/ffffff?text=No+Cover'">
+              <div class="rec-book-info">
+                <h4 class="rec-book-title">${book.title}</h4>
+                <p class="rec-book-author">${book.author}</p>
+                <span class="rec-book-subject">${book.subject}</span>
+              </div>
+            `;
+
+            gridEl.appendChild(bookCard);
+          });
+        } catch (error) {
+          console.error('Error loading recommendations:', error);
+          loadingEl.style.display = 'none';
+          errorEl.style.display = 'block';
+        }
+      }
+
+      // Load recommendations on page load
+      loadRecommendations();
+    </script>
+  </body>
 </html>
