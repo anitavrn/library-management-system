@@ -37,6 +37,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Daftar denda dan bayar denda
     Route::get('/transactions/fines', [TransactionController::class, 'fines']);
     Route::post('/transactions/{id}/pay-fine', [TransactionController::class, 'payFine']);
+    // Rekomendasi buku
+    Route::get('/transactions/recommendations', [TransactionController::class, 'recommendations']);
 
 
     // Logout (member & admin)
