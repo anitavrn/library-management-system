@@ -79,6 +79,14 @@
       box-shadow: 0 8px 20px rgba(0,0,0,0.08) !important;
     }
     .btn-borrow:hover { background: #e63b3f !important; }
+    .highlight-row {
+      background-color: #fff3cd !important;
+      animation: pulse 2s ease-in-out;
+    }
+    @keyframes pulse {
+      0%, 100% { background-color: #fff3cd; }
+      50% { background-color: #ffe9a6; }
+    }
   </style>
 </head>
 <body>
@@ -154,6 +162,10 @@ function formatCurrency(v){ return 'Rp ' + Number(v).toLocaleString('id-ID'); }
 
 async function loadFines(){
   try {
+    // Cek URL parameter untuk highlight transaction tertentu
+    const urlParams = new URLSearchParams(window.location.search);
+    const highlightId = urlParams.get('highlight');
+    
     const res = await fetch(API_URL + '/transactions/fines', { headers: { 'Accept':'application/json', 'Authorization':'Bearer '+token } });
     if (!res.ok) { alert('Gagal mengambil data denda'); return; }
     const json = await res.json();
@@ -194,6 +206,15 @@ async function loadFines(){
 
   data.forEach(trx => {
     const tr = document.createElement('tr');
+    
+    // Highlight row jika ID cocok dengan parameter URL
+    if (highlightId && trx.id == highlightId) {
+      tr.classList.add('highlight-row');
+      // Scroll ke row ini setelah render
+      setTimeout(() => {
+        tr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
+    }
 
     const title = trx.book ? trx.book.title : '—';
     const borrowDateObj = trx.borrow_date ? new Date(trx.borrow_date) : null;

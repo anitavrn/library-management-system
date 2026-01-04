@@ -80,12 +80,48 @@ class TransactionController extends Controller
     // List transaksi member yang memiliki denda (belum dibayar)
     public function fines(Request $request)
     {
-        $list = Transaction::with(['book'])
+        // Ambil semua transaksi borrowed dan yang punya fine_amount > 0
+        $transactions = Transaction::with(['book'])
             ->where('user_id', $request->user()->id)
-            ->where('fine_amount', '>', 0)
-            ->whereNull('fine_paid_at')
+            ->where(function($query) {
+                $query->where('status', 'borrowed')
+                      ->orWhere('fine_amount', '>', 0);
+            })
             ->orderBy('id', 'desc')
             ->get();
+
+        // Filter: hanya yang benar-benar punya denda (terlambat ATAU fine_amount > 0) DAN belum dibayar
+        $list = $transactions->filter(function($trx) {
+            // Jika sudah dibayar, skip
+            if ($trx->fine_paid_at) {
+                return false;
+            }
+
+            // Jika fine_amount sudah di-set dan > 0, include
+            if ($trx->fine_amount > 0) {
+                return true;
+            }
+
+            // Jika belum ada fine_amount, cek apakah terlambat
+            if ($trx->status === 'borrowed' && $trx->due_date) {
+                $dueDate = \Carbon\Carbon::parse($trx->due_date);
+                $now = now();
+                if ($now->gt($dueDate)) {
+                    // Terlambat! Hitung dan SET fine_amount sekarang
+                    // Gunakan floor() untuk bulatkan ke bawah agar konsisten
+                    $daysLate = floor($dueDate->diffInDays($now));
+                    $fineAmount = $daysLate * 1000;
+
+                    // Set fine_amount ke database
+                    $trx->fine_amount = $fineAmount;
+                    $trx->save();
+
+                    return true;
+                }
+            }
+
+            return false;
+        })->values();
 
         return response()->json([
             'message' => 'Daftar denda member',
@@ -354,7 +390,7 @@ class TransactionController extends Controller
     // ======================
 
     // PUT /transactions/{id}/return
-    // Member request return => status return_pending
+    // Member request return => validasi denda, set fine_amount, status return_pending
     public function requestReturn(Request $request, $id)
     {
         $trx = Transaction::with(['book'])->find($id);
@@ -373,32 +409,76 @@ class TransactionController extends Controller
             return response()->json(['message' => 'Buku tidak sedang dipinjam'], 400);
         }
 
-        // Hitung denda estimasi sekarang — jika ada denda dan belum dibayar, tolak request
-        $fineAmount = 0;
+        // Hitung denda CURRENT berdasarkan keterlambatan
+        $currentFine = 0;
         if ($trx->due_date) {
             $dueDate = \Carbon\Carbon::parse($trx->due_date);
             $now = now();
             if ($now->gt($dueDate)) {
-                $daysLate = $dueDate->diffInDays($now);
-                $fineAmount = $daysLate * 1000; // Rp 1000 per hari
+                // Gunakan floor() untuk bulatkan ke bawah agar konsisten
+                $daysLate = floor($dueDate->diffInDays($now));
+                $currentFine = $daysLate * 1000; // Rp 1000 per hari
             }
         }
 
-        if ($fineAmount > 0 && !$trx->fine_paid_at) {
+        // LOGIKA BARU: Cek apakah fine_amount sudah pernah di-set
+        if ($trx->fine_amount == 0) {
+            // PERTAMA KALI request return
+            if ($currentFine > 0) {
+                // Set fine_amount ke database
+                $trx->update(['fine_amount' => $currentFine]);
+
+                return response()->json([
+                    'message' => 'Ada denda sebesar Rp ' . number_format($currentFine, 0, ',', '.') . '. Silakan bayar denda terlebih dahulu di halaman Denda sebelum mengajukan pengembalian.',
+                    'fine_amount' => $currentFine,
+                    'requires_payment' => true
+                ], 400);
+            }
+
+            // Tidak ada denda, langsung bisa return
+            $trx->update(['status' => 'return_pending']);
+
             return response()->json([
-                'message' => 'Ada denda sebesar Rp ' . number_format($fineAmount, 0, ',', '.') . ". Silakan bayar denda terlebih dahulu sebelum mengajukan pengembalian."
-            ], 400);
+                'message' => 'Permintaan pengembalian berhasil. Silahkan tunggu konfirmasi petugas',
+                'data' => $trx->fresh(['book'])
+            ], 200);
+        } else {
+            // SUDAH PERNAH set fine_amount sebelumnya
+            // Re-calculate untuk cek apakah denda bertambah
+
+            // Toleransi: jika selisih < Rp 1.000 (kurang dari 1 hari), anggap tidak bertambah
+            $difference = $currentFine - $trx->fine_amount;
+
+            if ($difference >= 1000) {
+                // DENDA BERTAMBAH minimal 1 hari! Update fine_amount dan tolak
+                $trx->update(['fine_amount' => $currentFine]);
+
+                return response()->json([
+                    'message' => 'Denda bertambah dari Rp ' . number_format($trx->fine_amount, 0, ',', '.') . ' menjadi Rp ' . number_format($currentFine, 0, ',', '.') . '. Silakan bayar selisih denda sebesar Rp ' . number_format($difference, 0, ',', '.') . ' terlebih dahulu.',
+                    'fine_increased' => true,
+                    'previous_fine' => $trx->fine_amount,
+                    'current_fine' => $currentFine,
+                    'additional_fine' => $difference
+                ], 400);
+            }
+
+            // Denda tidak bertambah, cek apakah sudah dibayar
+            if (!$trx->fine_paid_at) {
+                return response()->json([
+                    'message' => 'Denda sebesar Rp ' . number_format($trx->fine_amount, 0, ',', '.') . ' belum dibayar. Silakan bayar denda terlebih dahulu di halaman Denda.',
+                    'fine_amount' => $trx->fine_amount,
+                    'requires_payment' => true
+                ], 400);
+            }
+
+            // Denda sudah lunas, bisa return
+            $trx->update(['status' => 'return_pending']);
+
+            return response()->json([
+                'message' => 'Permintaan pengembalian berhasil. Silahkan tunggu konfirmasi petugas',
+                'data' => $trx->fresh(['book'])
+            ], 200);
         }
-
-        // Update status menjadi return_pending
-        $trx->update([
-            'status' => 'return_pending'
-        ]);
-
-        return response()->json([
-            'message' => 'Proses pengembalian telah dilakukan. Silahkan tunggu konfirmasi petugas',
-            'data' => $trx->fresh(['book'])
-        ], 200);
     }
 
     // ======================
@@ -432,23 +512,17 @@ class TransactionController extends Controller
             return response()->json(['message' => 'Transaksi bukan status return_pending'], 400);
         }
 
-        // Hitung denda jika terlambat
-        $fineAmount = 0;
-        if ($trx->due_date) {
-            $dueDate = \Carbon\Carbon::parse($trx->due_date);
-            $returnDate = now();
-
-            if ($returnDate->gt($dueDate)) {
-                $daysLate = $dueDate->diffInDays($returnDate);
-                $fineAmount = $daysLate * 1000; // Rp 1000 per hari
-            }
+        // Validasi: jika ada denda, pastikan sudah dibayar
+        if ($trx->fine_amount > 0 && !$trx->fine_paid_at) {
+            return response()->json([
+                'message' => 'Tidak bisa approve pengembalian. Denda sebesar Rp ' . number_format($trx->fine_amount, 0, ',', '.') . ' belum dibayar oleh member.'
+            ], 400);
         }
 
         // Update status menjadi returned
         $trx->update([
             'status' => 'returned',
-            'return_date' => now(),
-            'fine_amount' => $fineAmount
+            'return_date' => now()
         ]);
 
         // Kembalikan stok buku
@@ -457,7 +531,7 @@ class TransactionController extends Controller
         }
 
         return response()->json([
-            'message' => 'Pengembalian buku disetujui',
+            'message' => 'Pengembalian buku disetujui' . ($trx->fine_amount > 0 ? ' (denda sudah lunas)' : ''),
             'data' => $trx->fresh(['user', 'book'])
         ], 200);
     }

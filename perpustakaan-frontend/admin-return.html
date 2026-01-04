@@ -93,6 +93,14 @@
         cursor: pointer;
         text-decoration: underline;
       }
+      .fine-status-paid {
+        color: #28a745;
+        font-weight: 600;
+      }
+      .fine-status-unpaid {
+        color: #d32f2f;
+        font-weight: 600;
+      }
     </style>
   </head>
   <body>
@@ -117,13 +125,14 @@
                 <th>Tanggal Pinjam</th>
                 <th>Tenggat Waktu</th>
                 <th>Tanggal Kembali</th>
-                <th>Denda Estimasi</th>
+                <th>Denda</th>
+                <th>Status Denda</th>
                 <th>Aksi</th>
               </tr>
             </thead>
             <tbody id="returnTableBody">
               <tr>
-                <td colspan="7" style="text-align: center">Memuat data...</td>
+                <td colspan="8" style="text-align: center">Memuat data...</td>
               </tr>
             </tbody>
           </table>
@@ -336,7 +345,7 @@
           .then(({ status, data }) => {
             if (status !== 200) {
               returnTableBody.innerHTML = `
-        <tr><td colspan="7" style="text-align:center">
+        <tr><td colspan="8" style="text-align:center">
           Gagal memuat data: ${data.message || 'Error'}
         </td></tr>
       `;
@@ -348,7 +357,7 @@
             if (list.length === 0) {
               returnTableBody.innerHTML = `
         <tr>
-          <td colspan="7" style="text-align:center">
+          <td colspan="8" style="text-align:center">
             Tidak ada pengembalian yang menunggu verifikasi
           </td>
         </tr>
@@ -358,11 +367,25 @@
 
             returnTableBody.innerHTML = list
               .map((trx) => {
-                const fine = calculateFine(trx.due_date);
+                // Gunakan fine_amount dari server jika ada, kalau tidak ada hitung estimasi
+                const serverFine = trx.fine_amount || 0;
+                const estimatedFine = calculateFine(trx.due_date);
+                const fineAmount = serverFine > 0 ? serverFine : estimatedFine;
+                
                 const fineDisplay =
-                  fine > 0
-                    ? `<span class="fine-amount">${formatCurrency(fine)}</span>`
+                  fineAmount > 0
+                    ? `<span class="fine-amount">${formatCurrency(fineAmount)}</span>`
                     : `<span class="fine-zero">Rp 0</span>`;
+                
+                // Status denda
+                let fineStatus = '-';
+                if (fineAmount > 0) {
+                  if (trx.fine_paid_at) {
+                    fineStatus = '<span class="fine-status-paid">✓ Lunas</span>';
+                  } else {
+                    fineStatus = '<span class="fine-status-unpaid">✗ Belum Lunas</span>';
+                  }
+                }
 
                 return `
         <tr>
@@ -380,6 +403,7 @@
           <td>${fmtDate(trx.due_date)}</td>
           <td>${fmtDate(trx.updated_at)}</td>
           <td>${fineDisplay}</td>
+          <td>${fineStatus}</td>
           <td>
             <button class="btn-approve" onclick="approveReturn(${trx.id})">
               Setujui
@@ -392,7 +416,7 @@
           })
           .catch(() => {
             returnTableBody.innerHTML = `
-      <tr><td colspan="7" style="text-align:center">
+      <tr><td colspan="8" style="text-align:center">
         Tidak bisa terhubung ke backend.
       </td></tr>
     `;

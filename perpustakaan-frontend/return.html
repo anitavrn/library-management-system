@@ -48,6 +48,19 @@
         background-color: #6c757d;
         cursor: not-allowed;
       }
+      .btn-pay-fine {
+        background-color: #ff9800 !important;
+        padding: 6px 16px;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+      }
+      .btn-pay-fine:hover {
+        background-color: #f57c00 !important;
+      }
     </style>
   </head>
   <body>
@@ -131,6 +144,7 @@
 
         if (today <= due) return 0;
 
+        // Gunakan Math.floor untuk bulatkan ke bawah agar konsisten dengan backend
         const daysLate = Math.floor((today - due) / (1000 * 60 * 60 * 24));
         return daysLate * 1000; // Rp 1000 per hari
       }
@@ -146,6 +160,14 @@
           default:
             return '<span class="status-badge">' + status + '</span>';
         }
+      }
+
+      /* =========================
+   REDIRECT TO FINE PAGE
+========================= */
+      function goToPayFine(transactionId) {
+        // Redirect ke halaman denda dengan highlight transaction tertentu
+        window.location.href = 'fine.html?highlight=' + transactionId;
       }
 
       /* =========================
@@ -184,6 +206,23 @@
                     showConfirmButton: false,
                   });
                   loadReturnData(); // Reload data
+                } else if (status === 400 && (data.fine_increased || data.requires_payment)) {
+                  // Denda bertambah atau ada denda yang harus dibayar
+                  Swal.fire({
+                    icon: 'warning',
+                    title: data.fine_increased ? 'Denda Bertambah!' : 'Ada Denda!',
+                    text: data.message,
+                    confirmButtonText: 'Bayar Denda Sekarang',
+                    confirmButtonColor: '#ff9800',
+                    showCancelButton: true,
+                    cancelButtonText: 'Nanti'
+                  }).then((result) => {
+                    if (result.isConfirmed) {
+                      window.location.href = 'fine.html';
+                    } else {
+                      loadReturnData(); // Reload untuk update fine_amount
+                    }
+                  });
                 } else {
                   Swal.fire({
                     icon: 'error',
@@ -261,19 +300,25 @@
 
                 let actionBtn = '';
                 if (trx.status === 'borrowed') {
-                  // jika estimasi denda > 0 dan belum dibayar, jangan izinkan pengembalian
-                  if (fine > 0 && !trx.fine_paid_at) {
-                    // jika user sudah mengirim permintaan pembayaran, tunjukkan status menunggu
+                  // Cek denda dari server (fine_amount) atau estimasi frontend
+                  const hasFine = (trx.fine_amount > 0) || (fine > 0);
+                  const finePaid = trx.fine_paid_at ? true : false;
+                  
+                  if (hasFine && !finePaid) {
+                    // Ada denda dan belum dibayar
                     if (trx.fine_payment_requested_at) {
-                      actionBtn = '<button class="btn-return" disabled>Permintaan Terkirim</button>';
+                      // Sudah request pembayaran, tunggu approval admin
+                      actionBtn = '<button class="btn-return" disabled>Menunggu Approval Denda</button>';
                     } else {
-                      actionBtn = '<button class="btn-return" disabled>Bayar Denda Terlebih Dahulu</button>';
+                      // Belum bayar, tampilkan tombol Bayar Denda (orange)
+                      actionBtn = `<button class="btn-pay-fine" onclick="goToPayFine(${trx.id})">💰 Bayar Denda</button>`;
                     }
                   } else {
+                    // Tidak ada denda atau sudah dibayar
                     actionBtn = `<button class="btn-return" onclick="returnBook(${trx.id})">Kembalikan Buku</button>`;
                   }
                 } else if (trx.status === 'return_pending') {
-                  actionBtn = '<button class="btn-return" disabled>Menunggu</button>';
+                  actionBtn = '<button class="btn-return" disabled>Menunggu Verifikasi</button>';
                 } else if (trx.status === 'returned') {
                   actionBtn = '<span style="color: #666;">-</span>';
                 }
