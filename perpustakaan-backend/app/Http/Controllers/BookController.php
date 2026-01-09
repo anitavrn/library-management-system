@@ -79,4 +79,18 @@ class BookController extends Controller
         $book->delete();
         return response()->json(['message' => 'Book deleted'], 200);
     }
+
+    // PUT /admin/books/{id}/quick-stock
+    public function quickAddStock($id)
+    {
+        $book = Book::find($id);
+        if (!$book) return response()->json(['message' => 'Book not found'], 404);
+
+        $book->increment('stock');
+
+        return response()->json([
+            'message' => 'Stok berhasil ditambah',
+            'data'    => $book
+        ], 200);
+    }
 }

@@ -2,9 +2,10 @@
 body {
   margin: 0;
   font-family: Arial, sans-serif;
-  background: linear-gradient(135deg, #ffd1e8, #e0f0ff);
-  height: 100vh;
+  background: linear-gradient(135deg, #ffd1e8 0%, #c2e5ff 100%);
+  min-height: 100vh;
 }
+
 /* ================= TOP BAR ================= */
 .topbar {
   position: fixed;
@@ -95,6 +96,7 @@ body {
     opacity: 0;
     transform: translateY(-6px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -219,7 +221,7 @@ body {
 
 .dashboard-wrapper {
   min-height: 100vh;
-  background: linear-gradient(135deg, #ffd1e8, #e0f0ff);
+  background: linear-gradient(135deg, #ffd1e8 0%, #c2e5ff 100%);
   padding: 40px;
 }
 
@@ -287,7 +289,7 @@ body {
 /* halaman wrapper */
 .page-wrapper {
   min-height: 100vh;
-  background: linear-gradient(135deg, #ffd1e8, #e0f0ff);
+  background: linear-gradient(135deg, #ffd1e8 0%, #c2e5ff 100%);
   display: flex;
   justify-content: center;
   align-items: flex-start;
@@ -332,12 +334,13 @@ body {
   background: #ffb6d9;
   color: #333;
   padding: 12px;
-  text-align: left;
+  text-align: center;
 }
 
 .book-table td {
   padding: 12px;
   border-bottom: 1px solid #eee;
+  text-align: center;
 }
 
 .book-table tr:hover {
@@ -379,7 +382,7 @@ body {
 }
 
 /* HEADER */
-.header {
+.header-top {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -501,7 +504,7 @@ body {
 body {
   margin: 0;
   font-family: Arial, sans-serif;
-  background: linear-gradient(135deg, #ffd6e8, #f3e7ff);
+  background: linear-gradient(135deg, #ffd1e8 0%, #c2e5ff 100%);
 }
 
 .detail-page {
@@ -588,7 +591,7 @@ body {
   gap: 15px;
 }
 
-.btn-back {
+.btn-back-red {
   flex: 1;
   background: #ff4d4d;
   border: none;
@@ -618,9 +621,10 @@ body {
   font-family: 'Segoe UI', sans-serif;
 }
 
-body {
+/* PAGE WRAPPER BASE */
+.page-base-body {
   margin: 0;
-  background: linear-gradient(135deg, #ffe6f0, #f3e8ff);
+  background: linear-gradient(135deg, #ffd1e8 0%, #c2e5ff 100%);
   min-height: 100vh;
 }
 
@@ -751,12 +755,13 @@ body {
   padding: 10px;
   border-bottom: 1px solid #eee;
   font-size: 14px;
+  text-align: center;
 }
 
 .history-table th {
   background: #ffe0f0;
   color: #ff5fa2;
-  text-align: left;
+  text-align: center;
 }
 
 .history-table tr:hover {

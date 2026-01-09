@@ -87,6 +87,9 @@ function loginAdmin() {
    GUARD DASHBOARD ADMIN
 ========================= */
 function requireAdminDashboard() {
+  // 🔒 JALAN HANYA DI admin-dashboard.html
+  if (!location.pathname.includes("admin-dashboard.html")) return;
+
   const token = localStorage.getItem(ADMIN_TOKEN_KEY);
   const userStr = localStorage.getItem(ADMIN_USER_KEY);
 
@@ -112,8 +115,11 @@ function requireAdminDashboard() {
       data.user.name ||
       data.user.email;
 
-    document.getElementById("welcome").innerText =
-      `Hai, ${name} 👋\nSelamat datang di Sistem Perpustakaan 📚`;
+    const el = document.getElementById("welcome");
+    if (el) {
+      el.innerText =
+        `Hai, ${name} 👋\nSelamat datang di Sistem Perpustakaan 📚`;
+    }
   })
   .catch(() => {
     localStorage.removeItem(ADMIN_TOKEN_KEY);
@@ -121,6 +127,7 @@ function requireAdminDashboard() {
     window.location.replace("admin-login.html");
   });
 }
+
 
 /* =========================
    NAVIGATION

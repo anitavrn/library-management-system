@@ -1,201 +1,457 @@
 <!DOCTYPE html>
 <html lang="id">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Dashboard Member</title>
-    <link rel="stylesheet" href="css/style.css" />
-  </head>
-  <body>
-    <!-- ================= TOP BAR ================= -->
-    <div class="topbar">
-      <div class="profile-wrapper" onclick="toggleProfile()">
-        <div class="profile-avatar">👤</div>
-      </div>
 
-      <!-- PROFILE DROPDOWN -->
-      <div class="profile-dropdown" id="profileDropdown">
-        <p class="profile-role">Member</p>
-        <p class="profile-email" id="profileEmail">email@mail.com</p>
-        <button class="btn-logout" onclick="logout()">Logout</button>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Member Dashboard</title>
+
+  <!-- GOOGLE FONTS: OUTFIT -->
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/style.css?v=3.0">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <style>
+    /* SINGLE MAIN PINK GRADIENT BACKGROUND */
+    body {
+      font-family: 'Outfit', sans-serif !important;
+      background: linear-gradient(135deg, #ffd1e8 0%, #c2e5ff 100%) !important;
+      min-height: 100vh;
+      color: #1e293b;
+      margin: 0;
+      overflow-x: hidden;
+    }
+
+    .main-container {
+      width: 100%;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 20px;
+      box-sizing: border-box;
+    }
+
+    /* TOPBAR GREETOING AREA */
+    .dashboard-intro {
+      padding: 70px 0 50px;
+      text-align: center;
+    }
+
+    .dashboard-intro h1 {
+      font-size: 42px;
+      font-weight: 800;
+      margin: 0;
+      color: #1e293b;
+      letter-spacing: -1px;
+    }
+
+    .dashboard-intro p {
+      color: #ff4d94;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      font-size: 13px;
+      margin-bottom: 10px;
+    }
+
+    /* SHARED GLASS STYLE */
+    .glass-box {
+      background: rgba(255, 255, 255, 0.4);
+      backdrop-filter: blur(12px);
+      border-radius: 40px;
+      padding: 50px 30px;
+      margin-bottom: 40px;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      box-shadow: 0 10px 40px rgba(255, 111, 174, 0.05);
+      position: relative;
+    }
+
+    /* 4 ITEM HORIZONTAL MENU */
+    .dashboard-cards {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr) !important;
+      gap: 20px !important;
+    }
+
+    .dashboard-card {
+      background: white !important;
+      border-radius: 28px !important;
+      padding: 35px 15px !important;
+      text-align: center !important;
+      box-shadow: 0 8px 30px rgba(255, 111, 174, 0.06) !important;
+      transition: all 0.3s ease !important;
+      cursor: pointer;
+      border: 2px solid white;
+    }
+
+    .dashboard-card:hover {
+      transform: translateY(-8px) !important;
+      border-color: #ff6fae;
+      box-shadow: 0 15px 40px rgba(255, 111, 174, 0.12) !important;
+    }
+
+    .card-icon {
+      font-size: 42px;
+      margin-bottom: 18px;
+      display: block;
+    }
+
+    .card-title {
+      font-weight: 800;
+      font-size: 17px;
+      color: #1e293b;
+      margin-bottom: 5px;
+    }
+
+    .card-desc {
+      font-size: 11px;
+      color: #94a3b8;
+      font-weight: 400;
+    }
+
+    /* RECOMMENDATIONS SECTION */
+    .rec-section {
+      margin-top: 10px;
+    }
+
+    .rec-title-area {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .rec-title-area h2 {
+      font-weight: 800;
+      font-size: 28px;
+      color: #ff4d94;
+      margin: 0;
+    }
+
+    .rec-title-area p {
+      color: #64748b;
+      font-size: 14px;
+      margin-top: 5px;
+    }
+
+    /* SLIDER SYSTEM */
+    .slider-wrapper {
+      position: relative;
+      padding: 0 40px;
+    }
+
+    .slider-viewport {
+      overflow-x: auto;
+      scroll-behavior: smooth;
+      scrollbar-width: none;
+    }
+
+    .slider-viewport::-webkit-scrollbar {
+      display: none;
+    }
+
+    .rec-grid {
+      display: flex;
+      gap: 18px;
+      width: max-content;
+      padding: 10px 0;
+    }
+
+    /* SIDE BUTTONS */
+    .side-btn {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 44px;
+      height: 44px;
+      background: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 6px 20px rgba(255, 111, 174, 0.2);
+      cursor: pointer;
+      z-index: 10;
+      transition: 0.3s;
+      color: #ff6fae;
+      font-size: 18px;
+    }
+
+    .side-btn:hover {
+      background: #ff6fae;
+      color: white;
+      transform: translateY(-50%) scale(1.1);
+    }
+
+    .btn-left {
+      left: 0px;
+    }
+
+    .btn-right {
+      right: 0px;
+    }
+
+    /* BOOK PILL */
+    .book-pill {
+      background: white;
+      padding: 18px;
+      border-radius: 22px;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      width: 250px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02);
+      transition: 0.3s;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .book-pill:hover {
+      transform: scale(1.03);
+      box-shadow: 0 10px 25px rgba(255, 111, 174, 0.1);
+    }
+
+    .book-icon {
+      width: 48px;
+      height: 48px;
+      min-width: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 800;
+      color: white;
+    }
+
+    .book-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .book-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: #1e293b;
+      margin: 0;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      white-space: normal;
+      word-break: break-word;
+    }
+
+    .book-author {
+      font-size: 11px;
+      color: #ff6fae;
+      margin-top: 3px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* COLORS */
+    .bg-pink {
+      background: linear-gradient(135deg, #ff6fae, #ff8acb);
+    }
+
+    .bg-blue {
+      background: linear-gradient(135deg, #3b82f6, #60a5fa);
+    }
+
+    .bg-purple {
+      background: linear-gradient(135deg, #8b5cf6, #a78bfa);
+    }
+
+    .bg-orange {
+      background: linear-gradient(135deg, #f59e0b, #fbbf24);
+    }
+
+    /* TOPBAR & PROFILE */
+    .top-nav {
+      display: flex;
+      justify-content: flex-end;
+      padding: 20px 40px;
+      position: absolute;
+      width: 100%;
+      top: 0;
+      right: 0;
+      box-sizing: border-box;
+    }
+
+    .profile-dropdown {
+      position: absolute;
+      top: 75px;
+      right: 40px;
+      background: white;
+      padding: 25px;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(255, 111, 174, 0.1);
+      display: none;
+      z-index: 1000;
+      min-width: 240px;
+      text-align: center;
+      border-top: 4px solid #ff6fae;
+    }
+
+    @media (max-width: 992px) {
+      .dashboard-cards {
+        grid-template-columns: repeat(2, 1fr) !important;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .dashboard-cards {
+        grid-template-columns: 1fr !important;
+      }
+
+      .glass-box {
+        padding: 30px 15px;
+      }
+
+      .slider-wrapper {
+        padding: 0 45px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <nav class="top-nav">
+    <div class="profile-wrapper" onclick="toggleProfile()">
+      <div class="profile-avatar" style="border: 2px solid white; box-shadow: 0 10px 25px rgba(255,111,174,0.2);">👤
       </div>
     </div>
+    <div class="profile-dropdown" id="profileDropdown">
+      <h3 id="dropName" style="margin-bottom: 5px;">Member</h3>
+      <p id="profileEmail" style="font-size: 13px; color: #94a3b8; margin-bottom: 20px;"></p>
+      <button onclick="logout()"
+        style="width: 100%; border: none; background: #fee2e2; padding: 12px; border-radius: 12px; font-weight: 800; color: #ef4444; cursor: pointer;">Keluar</button>
+    </div>
+  </nav>
 
-    <!-- ================= DASHBOARD ================= -->
-    <div class="dashboard-wrapper">
-      <header class="dashboard-header">
-        <h1>Dashboard Member</h1>
-        <p id="welcomeName" class="welcome-name"></p>
-        <p class="welcome-subtext">Selamat datang di Sistem Perpustakaan 📚</p>
+  <div class="main-container">
+    <div id="dashboardContent" style="display: none;">
+      <header class="dashboard-intro">
+        <p>Digital Library Portal</p>
+        <h1 id="welcomeUser"></h1>
+        <p id="userTagline"
+          style="font-size: 16px; color: #64748b; margin-top: 10px; font-weight: 400; text-transform: none; letter-spacing: normal;">
+        </p>
       </header>
 
-      <div class="dashboard-cards">
-        <div class="dashboard-card" onclick="location.href='books.html'">
-          <span class="icon">📚</span>
-          <h3>Cari Buku</h3>
-          <p>Mencari dan melihat katalog buku</p>
-        </div>
-
-        <div
-          class="dashboard-card"
-          onclick="location.href='borrow-history.html'"
-        >
-          <span class="icon">📖</span>
-          <h3>Riwayat Peminjaman</h3>
-          <p>Melihat status dan histori peminjaman</p>
-        </div>
-
-        <div class="dashboard-card" onclick="location.href='return.html'">
-          <span class="icon">🔄</span>
-          <h3>Pengembalian Buku</h3>
-          <p>Ajukan pengembalian buku</p>
-        </div>
-
-        <div class="dashboard-card" onclick="location.href='fine.html'">
-          <span class="icon">💰</span>
-          <h3>Denda</h3>
-          <p>Melihat dan membayar denda</p>
+      <!-- MENU BOX (GLASS STYLE) -->
+      <div class="glass-box">
+        <div class="dashboard-cards">
+          <div class="dashboard-card" onclick="location.href='books.html'">
+            <span class="card-icon">🔍</span>
+            <h3 class="card-title">Explore</h3>
+            <p class="card-desc">Cari Katalog Buku</p>
+          </div>
+          <div class="dashboard-card" onclick="location.href='borrow-history.html'">
+            <span class="card-icon">📜</span>
+            <h3 class="card-title">Riwayat</h3>
+            <p class="card-desc">Status Pinjaman</p>
+          </div>
+          <div class="dashboard-card" onclick="location.href='return.html'">
+            <span class="card-icon">📤</span>
+            <h3 class="card-title">Kembali</h3>
+            <p class="card-desc">Ajukan Retur</p>
+          </div>
+          <div class="dashboard-card" onclick="location.href='fine.html'">
+            <span class="card-icon">💰</span>
+            <h3 class="card-title">Denda</h3>
+            <p class="card-desc">Cek Pembayaran</p>
+          </div>
         </div>
       </div>
 
-      <!-- ================= REKOMENDASI BUKU ================= -->
-      <section
-        class="recommendations-section"
-        id="recommendationsSection"
-        style="margin-top: 40px"
-      >
-        <h2 style="text-align: center; color: #ff5fa2; margin-bottom: 8px">
-          📚 Rekomendasi Buku untuk Anda
-        </h2>
-        <p style="text-align: center; color: #666; margin-bottom: 24px">
-          Berdasarkan riwayat peminjaman Anda
-        </p>
+      <!-- RECOMMENDATION BOX (GLASS STYLE) -->
+      <div class="glass-box">
+        <div class="rec-section">
+          <div class="rec-title-area">
+            <h2>✨ Rekomendasi Pilihan</h2>
+            <p>Buku spesial yang kami pilihkan hanya untuk Anda.</p>
+          </div>
 
-        <div
-          id="recommendationsLoading"
-          style="text-align: center; padding: 20px; color: #666"
-        >
-          Memuat rekomendasi...
-        </div>
+          <div class="slider-wrapper">
+            <div class="side-btn btn-left" onclick="slideRecs(-1)">❮</div>
+            <div class="side-btn btn-right" onclick="slideRecs(1)">❯</div>
 
-        <div
-          id="recommendationsGrid"
-          class="recommendations-grid"
-          style="display: none"
-        >
-          <!-- Recommendations will be loaded here -->
+            <div class="slider-viewport" id="sliderViewport">
+              <div id="recLoading" style="padding: 20px; color: #ff6fae; text-align: center;">Mengatur rak Anda...</div>
+              <div id="recGrid" class="rec-grid"></div>
+            </div>
+          </div>
         </div>
-
-        <div
-          id="recommendationsError"
-          style="display: none; text-align: center; padding: 20px; color: #999"
-        >
-          Belum ada rekomendasi. Pinjam buku untuk mendapatkan rekomendasi!
-        </div>
-      </section>
+      </div>
     </div>
+  </div>
 
-    <!-- ================= SCRIPT ================= -->
-    <script>
-      /* ================= AUTH CHECK (ANTI KEDIP) ================= */
-      const token = localStorage.getItem('token');
-      const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+  <script>
+    const API_URL = 'http://127.0.0.1:8000/api';
+    const token = localStorage.getItem('token');
+    const userStr = localStorage.getItem('currentUser');
+    let user = null;
 
-      if (!token || !currentUser) {
-        window.location.href = 'login.html';
-      }
+    try { if (userStr) user = JSON.parse(userStr); } catch (e) { }
 
-      /* ================= TAMPILKAN USER ================= */
-      document.getElementById(
-        'welcomeName'
-      ).innerText = `Hai, ${currentUser.name} 👋`;
+    if (!token || !user) {
+      window.location.href = 'login.html';
+    } else {
+      document.getElementById('dashboardContent').style.display = 'block';
+      document.getElementById('welcomeUser').innerText = `Hai, ${user.name}! 👋`;
+      document.getElementById('userTagline').innerText = "Temukan petualangan menarik di setiap halaman baru hari ini.";
+      document.getElementById('dropName').innerText = user.name;
+      document.getElementById('profileEmail').innerText = user.email;
+      loadRecs();
+    }
 
-      document.getElementById('profileEmail').innerText = currentUser.email;
+    function toggleProfile() {
+      const d = document.getElementById('profileDropdown');
+      d.style.display = (d.style.display === 'block' ? 'none' : 'block');
+    }
 
-      /* ================= DROPDOWN ================= */
-      function toggleProfile() {
-        const dropdown = document.getElementById('profileDropdown');
-        dropdown.style.display =
-          dropdown.style.display === 'block' ? 'none' : 'block';
-      }
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.top-nav')) document.getElementById('profileDropdown').style.display = 'none';
+    });
 
-      /* Klik luar menutup dropdown */
-      document.addEventListener('click', function (e) {
-        if (!e.target.closest('.topbar')) {
-          document.getElementById('profileDropdown').style.display = 'none';
+    function logout() { localStorage.clear(); window.location.href = 'login.html'; }
+
+    function slideRecs(direction) {
+      const viewport = document.getElementById('sliderViewport');
+      viewport.scrollLeft += direction * 280;
+    }
+
+    async function loadRecs() {
+      try {
+        const r = await fetch(`${API_URL}/transactions/recommendations`, {
+          headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+        });
+        const resData = await r.json();
+        document.getElementById('recLoading').style.display = 'none';
+
+        if (resData.data && resData.data.length > 0) {
+          const colors = ['bg-pink', 'bg-blue', 'bg-purple', 'bg-orange'];
+          document.getElementById('recGrid').innerHTML = resData.data.map((b, i) => {
+            return `
+                        <div class="book-pill" onclick="location.href='book-detail.html?id=${b.api_book_id}'">
+                            <div class="book-icon ${colors[i % colors.length]}">${b.title.charAt(0)}</div>
+                            <div class="book-info">
+                                <h4 class="book-title" title="${b.title}">${b.title}</h4>
+                                <p class="book-author">${b.author}</p>
+                            </div>
+                        </div>
+                      `;
+          }).join('');
+        } else {
+          document.getElementById('recLoading').innerText = "Belum ada rekomendasi.";
         }
-      });
+      } catch (e) { document.getElementById('recLoading').innerText = "Gagal memuat data."; }
+    }
+  </script>
+</body>
 
-      /* ================= LOGOUT ================= */
-      function logout() {
-        localStorage.removeItem('token');
-        localStorage.removeItem('currentUser');
-        window.location.href = 'login.html';
-      }
-
-      /* ================= LOAD RECOMMENDATIONS ================= */
-      const API_URL = 'http://127.0.0.1:8000/api';
-
-      async function loadRecommendations() {
-        const loadingEl = document.getElementById('recommendationsLoading');
-        const gridEl = document.getElementById('recommendationsGrid');
-        const errorEl = document.getElementById('recommendationsError');
-
-        try {
-          const response = await fetch(
-            `${API_URL}/transactions/recommendations`,
-            {
-              headers: {
-                Accept: 'application/json',
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          );
-
-          const result = await response.json();
-
-          loadingEl.style.display = 'none';
-
-          if (!response.ok || !result.data || result.data.length === 0) {
-            errorEl.style.display = 'block';
-            return;
-          }
-
-          gridEl.style.display = 'grid';
-          gridEl.innerHTML = '';
-
-          result.data.forEach((book) => {
-            const coverUrl = book.cover_id
-              ? `https://covers.openlibrary.org/b/id/${book.cover_id}-M.jpg`
-              : 'https://via.placeholder.com/180x270/ff5fa2/ffffff?text=No+Cover';
-
-            const bookCard = document.createElement('div');
-            bookCard.className = 'recommendation-card';
-            bookCard.onclick = () => {
-              window.location.href = `book-detail.html?id=${
-                book.api_book_id
-              }&author=${encodeURIComponent(book.author)}`;
-            };
-
-            bookCard.innerHTML = `
-              <img src="${coverUrl}" alt="${book.title}" class="rec-book-cover" onerror="this.src='https://via.placeholder.com/180x270/ff5fa2/ffffff?text=No+Cover'">
-              <div class="rec-book-info">
-                <h4 class="rec-book-title">${book.title}</h4>
-                <p class="rec-book-author">${book.author}</p>
-                <span class="rec-book-subject">${book.subject}</span>
-              </div>
-            `;
-
-            gridEl.appendChild(bookCard);
-          });
-        } catch (error) {
-          console.error('Error loading recommendations:', error);
-          loadingEl.style.display = 'none';
-          errorEl.style.display = 'block';
-        }
-      }
-
-      // Load recommendations on page load
-      loadRecommendations();
-    </script>
-  </body>
 </html>

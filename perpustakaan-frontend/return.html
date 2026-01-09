@@ -1,352 +1,379 @@
 <!DOCTYPE html>
 <html lang="id">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Pengembalian Buku</title>
-    <link rel="stylesheet" href="css/style.css" />
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <style>
-      .fine-amount {
-        color: #d32f2f;
-        font-weight: bold;
-      }
-      .fine-zero {
-        color: #388e3c;
-      }
-      .status-badge {
-        padding: 4px 12px;
-        border-radius: 12px;
-        font-size: 13px;
-        font-weight: 500;
-        display: inline-block;
-      }
-      .status-not-returned {
-        background-color: #fff3cd;
-        color: #856404;
-      }
-      .status-pending {
-        background-color: #cce5ff;
-        color: #004085;
-      }
-      .status-returned {
-        background-color: #d4edda;
-        color: #155724;
-      }
-      .btn-return {
-        padding: 6px 16px;
-        background-color: #28a745;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 14px;
-      }
-      .btn-return:hover {
-        background-color: #218838;
-      }
-      .btn-return:disabled {
-        background-color: #6c757d;
-        cursor: not-allowed;
-      }
-      .btn-pay-fine {
-        background-color: #ff9800 !important;
-        padding: 6px 16px;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 14px;
-        font-weight: 600;
-      }
-      .btn-pay-fine:hover {
-        background-color: #f57c00 !important;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="borrow-page">
-      <div class="borrow-card" style="width: 900px">
-        <h2 class="borrow-title">Pengembalian Buku</h2>
 
-        <table class="history-table">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pengembalian Buku</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    body {
+      font-family: 'Outfit', sans-serif !important;
+      background: linear-gradient(135deg, #ffd1e8 0%, #c2e5ff 100%) !important;
+      min-height: 100vh;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding-top: 50px;
+    }
+
+    .main-container {
+      width: 100%;
+      max-width: 1100px;
+      padding: 0 20px 40px;
+    }
+
+    .glass-box {
+      background: rgba(255, 255, 255, 0.45);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-radius: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
+      padding: 35px;
+      width: 100%;
+    }
+
+    .page-header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .page-title {
+      font-size: 32px;
+      font-weight: 800;
+      color: #ff6fae;
+      margin: 0;
+      letter-spacing: -0.5px;
+    }
+
+    .page-subtitle {
+      color: #64748b;
+      font-size: 15px;
+      margin-top: 8px;
+    }
+
+    /* Modern Table Style */
+    .table-container {
+      overflow-x: auto;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    .modern-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: center;
+    }
+
+    .modern-table th {
+      padding: 16px 20px;
+      background: rgba(255, 255, 255, 0.6);
+      color: #ff6fae;
+      font-weight: 700;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 2px solid rgba(255, 111, 174, 0.2);
+    }
+
+    .modern-table td {
+      padding: 18px 20px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+      font-size: 15px;
+      color: #1e293b;
+      vertical-align: middle;
+    }
+
+    .modern-table tbody tr {
+      transition: all 0.2s ease;
+    }
+
+    .modern-table tbody tr:hover {
+      background: rgba(255, 255, 255, 0.5);
+    }
+
+    /* Badges */
+    .badge {
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      display: inline-block;
+    }
+
+    .badge-not-returned {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .badge-pending {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .badge-returned {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .fine-amount {
+      font-weight: 700;
+      color: #ef4444;
+    }
+
+    .fine-zero {
+      color: #10b981;
+      font-weight: 600;
+    }
+
+    /* Action Buttons */
+    .btn-action {
+      padding: 10px 18px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      transition: all 0.25s ease;
+    }
+
+    .btn-return {
+      background: #10b981;
+      color: white;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+    }
+
+    .btn-return:hover:not(:disabled) {
+      background: #059669;
+      transform: translateY(-2px);
+    }
+
+    .btn-pay-fine {
+      background: #f59e0b;
+      color: white;
+      box-shadow: 0 4px 12px rgba(245, 158, 11, 0.25);
+    }
+
+    .btn-pay-fine:hover {
+      background: #d97706;
+      transform: translateY(-2px);
+    }
+
+    .btn-disabled {
+      background: #94a3b8;
+      color: white;
+      cursor: not-allowed;
+    }
+
+    .action-row {
+      margin-top: 30px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .btn-back-custom {
+      background: white;
+      color: #ff6fae;
+      border: 2px solid #ff6fae;
+      padding: 12px 30px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 15px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    .btn-back-custom:hover {
+      background: #ff6fae;
+      color: white;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="main-container">
+    <div class="glass-box">
+      <div class="page-header">
+        <h2 class="page-title">Pengembalian Buku</h2>
+        <p class="page-subtitle">Kelola pengembalian buku dan cek estimasi denda Anda</p>
+      </div>
+
+      <div class="table-container">
+        <table class="modern-table">
           <thead>
             <tr>
               <th>Judul Buku</th>
-              <th>Tanggal Pinjam</th>
-              <th>Tenggat Waktu</th>
-              <th>Denda Estimasi</th>
+              <th>Pinjam</th>
+              <th>Tenggat</th>
+              <th>Denda</th>
               <th>Status</th>
               <th>Aksi</th>
             </tr>
           </thead>
           <tbody id="returnBody">
             <tr>
-              <td colspan="6" style="text-align: center">Memuat data...</td>
+              <td colspan="6" style="padding: 40px; color: #64748b;">Memuat data peminjaman...</td>
             </tr>
           </tbody>
         </table>
+      </div>
 
-        <div class="action-row">
-          <button
-            class="btn-back"
-            onclick="window.location.href='dashboard.html'"
-          >
-            ← Kembali ke Dashboard
-          </button>
-        </div>
+      <div class="action-row">
+        <a href="dashboard.html" class="btn-back-custom">
+          <span>←</span> Kembali ke Dashboard
+        </a>
       </div>
     </div>
+  </div>
 
-    <script>
-      /* =========================
-   CONFIG
-========================= */
-      const API_URL = 'http://127.0.0.1:8000/api';
-      const TOKEN_KEY = 'token'; // token member
-      const USER_KEY = 'currentUser'; // user member
+  <script>
+    const API_URL = 'http://127.0.0.1:8000/api';
+    const TOKEN_KEY = 'token';
+    const token = localStorage.getItem(TOKEN_KEY);
 
-      /* =========================
-   AUTH CHECK
-========================= */
-      const token = localStorage.getItem(TOKEN_KEY);
-      const currentUser = localStorage.getItem(USER_KEY);
+    if (!token) window.location.href = 'login.html';
 
-      if (!token || !currentUser) {
-        window.location.href = 'login.html';
+    function fmtDate(dt) {
+      if (!dt) return '-';
+      const date = new Date(dt);
+      return date.toLocaleString('id-ID', {
+        day: 'numeric', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+      });
+    }
+
+    function formatCurrency(amount) {
+      return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
+    }
+
+    function calculateFine(dueDate, serverFine) {
+      if (serverFine > 0) return serverFine; // Persist if locked in
+      if (!dueDate) return 0;
+      const due = new Date(dueDate);
+      const now = new Date();
+      if (now <= due) return 0;
+      // Selisih jam, dibulatkan ke atas untuk denda harian (telat sejam = denda sehari)
+      const hoursLate = (now - due) / (1000 * 60 * 60);
+      const daysLate = Math.ceil(hoursLate / 24);
+      return Math.max(daysLate, 1) * 1000;
+    }
+
+    function getStatusBadge(status, requestedFine, isPaid) {
+      if (requestedFine) return '<span class="badge badge-pending">Verifikasi Denda</span>';
+      switch (status) {
+        case 'borrowed': return '<span class="badge badge-not-returned">Dipinjam</span>';
+        case 'returned':
+        case 'return_pending': return '<span class="badge badge-returned">Dikembalikan</span>';
+        default: return '<span class="badge">' + status + '</span>';
       }
+    }
 
-      /* =========================
-   HELPER FUNCTIONS
-========================= */
-      function fmtDate(dt) {
-        if (!dt) return '-';
-        return String(dt).substring(0, 10); // YYYY-MM-DD
-      }
+    function goToPayFine(id) { window.location.href = 'fine.html?highlight=' + id; }
 
-      function formatCurrency(amount) {
-        return new Intl.NumberFormat('id-ID', {
-          style: 'currency',
-          currency: 'IDR',
-          minimumFractionDigits: 0,
-        }).format(amount);
-      }
-
-      // Hitung denda estimasi (di frontend untuk preview)
-      function calculateFine(dueDate) {
-        if (!dueDate) return 0;
-
-        const due = new Date(dueDate);
-        const today = new Date();
-
-        // Reset waktu ke midnight untuk perbandingan tanggal saja
-        due.setHours(0, 0, 0, 0);
-        today.setHours(0, 0, 0, 0);
-
-        if (today <= due) return 0;
-
-        // Gunakan Math.floor untuk bulatkan ke bawah agar konsisten dengan backend
-        const daysLate = Math.floor((today - due) / (1000 * 60 * 60 * 24));
-        return daysLate * 1000; // Rp 1000 per hari
-      }
-
-      function getStatusBadge(status) {
-        switch (status) {
-          case 'borrowed':
-            return '<span class="status-badge status-not-returned">Belum Dikembalikan</span>';
-          case 'return_pending':
-            return '<span class="status-badge status-pending">Menunggu Konfirmasi</span>';
-          case 'returned':
-            return '<span class="status-badge status-returned">Berhasil Dikembalikan</span>';
-          default:
-            return '<span class="status-badge">' + status + '</span>';
-        }
-      }
-
-      /* =========================
-   REDIRECT TO FINE PAGE
-========================= */
-      function goToPayFine(transactionId) {
-        // Redirect ke halaman denda dengan highlight transaction tertentu
-        window.location.href = 'fine.html?highlight=' + transactionId;
-      }
-
-      /* =========================
-   RETURN ACTIONS
-========================= */
-      function returnBook(transactionId) {
-        Swal.fire({
-          title: 'Konfirmasi Pengembalian',
-          text: 'Apakah Anda yakin ingin mengembalikan buku ini?',
-          icon: 'question',
-          showCancelButton: true,
-          confirmButtonColor: '#28a745',
-          cancelButtonColor: '#d33',
-          confirmButtonText: 'Ya, Kembalikan',
-          cancelButtonText: 'Batal',
-        }).then((result) => {
-          if (result.isConfirmed) {
-            fetch(`${API_URL}/transactions/${transactionId}/return`, {
-              method: 'PUT',
-              headers: {
-                Accept: 'application/json',
-                Authorization: 'Bearer ' + token,
-              },
-            })
-              .then(async (res) => {
-                const data = await res.json();
-                return { status: res.status, data };
-              })
-              .then(({ status, data }) => {
-                if (status === 200) {
-                  Swal.fire({
-                    icon: 'success',
-                    title: 'Berhasil!',
-                    text: data.message,
-                    timer: 2000,
-                    showConfirmButton: false,
-                  });
-                  loadReturnData(); // Reload data
-                } else if (status === 400 && (data.fine_increased || data.requires_payment)) {
-                  // Denda bertambah atau ada denda yang harus dibayar
-                  Swal.fire({
-                    icon: 'warning',
-                    title: data.fine_increased ? 'Denda Bertambah!' : 'Ada Denda!',
-                    text: data.message,
-                    confirmButtonText: 'Bayar Denda Sekarang',
-                    confirmButtonColor: '#ff9800',
-                    showCancelButton: true,
-                    cancelButtonText: 'Nanti'
-                  }).then((result) => {
-                    if (result.isConfirmed) {
-                      window.location.href = 'fine.html';
-                    } else {
-                      loadReturnData(); // Reload untuk update fine_amount
-                    }
-                  });
-                } else {
-                  Swal.fire({
-                    icon: 'error',
-                    title: 'Gagal!',
-                    text: data.message || 'Error',
-                  });
-                }
-              })
-              .catch((err) => {
-                console.error(err);
+    function returnBook(id) {
+      Swal.fire({
+        title: 'Konfirmasi Pengembalian',
+        text: 'Apakah Anda yakin ingin mengembalikan buku ini?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#10b981',
+        cancelButtonColor: '#ef4444',
+        confirmButtonText: 'Ya, Kembalikan',
+        cancelButtonText: 'Batal'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          fetch(`${API_URL}/transactions/${id}/return`, {
+            method: 'PUT',
+            headers: { Accept: 'application/json', Authorization: 'Bearer ' + token },
+          })
+            .then(async (res) => {
+              const data = await res.json();
+              if (res.ok) {
                 Swal.fire({
-                  icon: 'error',
-                  title: 'Error',
-                  text: 'Tidak dapat terhubung ke server',
+                  icon: 'success',
+                  title: 'Buku Berhasil Dikembalikan!',
+                  text: 'Buku telah dikembalikan dan stok sudah diperbarui.',
+                  timer: 2500,
+                  showConfirmButton: false
                 });
-              });
+                loadReturnData();
+              } else if (res.status === 400 && (data.fine_increased || data.requires_payment)) {
+                Swal.fire({
+                  icon: 'warning',
+                  title: 'Ada Denda!',
+                  text: data.message,
+                  confirmButtonText: 'Bayar Sekarang',
+                  confirmButtonColor: '#f59e0b',
+                  showCancelButton: true,
+                  cancelButtonText: 'Nanti'
+                }).then((r) => { if (r.isConfirmed) window.location.href = 'fine.html'; else loadReturnData(); });
+              } else {
+                Swal.fire({ icon: 'error', title: 'Gagal!', text: data.message || 'Error' });
+              }
+            })
+            .catch(() => Swal.fire({ icon: 'error', title: 'Error', text: 'Gagal terhubung ke server' }));
+        }
+      });
+    }
+
+    const returnBody = document.getElementById('returnBody');
+    function loadReturnData() {
+      fetch(`${API_URL}/transactions/my`, { headers: { Accept: 'application/json', Authorization: 'Bearer ' + token } })
+        .then(res => res.json())
+        .then(data => {
+          const list = (data.data || []).filter(t => t.status === 'borrowed');
+          if (list.length === 0) {
+            returnBody.innerHTML = '<tr><td colspan="6" style="padding: 60px; color: #64748b;">Tidak ada buku yang perlu dikembalikan 📚</td></tr>';
+            return;
           }
-        });
-      }
+          returnBody.innerHTML = list.map(trx => {
+            const paid = !!trx.fine_paid_at;
+            // PERSIST NOMINAL: Gunakan fine_amount jika ada, jika tidak estimasi.
+            const fine = calculateFine(trx.due_date, trx.fine_amount);
+            let fineDisplay = '-';
+            if (fine > 0) {
+              if (paid) fineDisplay = `<span style="color: #10b981; font-weight: 800;">✓ Lunas (${formatCurrency(fine)})</span>`;
+              else fineDisplay = `<span class="fine-amount">${formatCurrency(fine)}</span>`;
+            } else {
+              fineDisplay = `<span style="color: #94a3b8;">Rp 0</span>`;
+            }
+            const finePaid = !!trx.fine_paid_at;
+            const requested = !!trx.fine_payment_requested_at;
 
-      /* =========================
-   LOAD RETURN DATA
-========================= */
-      const returnBody = document.getElementById('returnBody');
+            let actionBtn = '-';
+            if (trx.status === 'borrowed') {
+              const hasFine = fine > 0;
 
-      function loadReturnData() {
-        fetch(`${API_URL}/transactions/my`, {
-          headers: {
-            Accept: 'application/json',
-            Authorization: 'Bearer ' + token,
-          },
+              if (hasFine && !finePaid) {
+                if (requested) actionBtn = '<button class="btn-action btn-disabled" disabled>Verifikasi Denda</button>';
+                else actionBtn = `<button class="btn-action btn-pay-fine" onclick="goToPayFine(${trx.id})">💰 Bayar Denda</button>`;
+              } else {
+                actionBtn = `<button class="btn-action btn-return" onclick="returnBook(${trx.id})">Kembalikan Buku</button>`;
+              }
+            }
+
+            return `<tr>
+              <td style="font-weight: 600;">${trx.book?.title || '-'}</td>
+              <td>${fmtDate(trx.borrow_date)}</td>
+              <td>${fmtDate(trx.due_date)}</td>
+              <td>${fineDisplay}</td>
+              <td>${getStatusBadge(trx.status, requested && !paid, paid)}</td>
+              <td>${actionBtn}</td>
+            </tr>`;
+          }).join('');
         })
-          .then(async (res) => {
-            const data = await res.json();
-            return { status: res.status, data };
-          })
-          .then(({ status, data }) => {
-            if (status !== 200) {
-              returnBody.innerHTML = `
-        <tr><td colspan="6" style="text-align:center">
-          Gagal memuat data: ${data.message || 'Error'}
-        </td></tr>
-      `;
-              return;
-            }
+        .catch(() => returnBody.innerHTML = '<tr><td colspan="6" style="padding: 40px; color: #ef4444;">Gagal mengambil data dari server.</td></tr>');
+    }
+    loadReturnData();
+  </script>
+</body>
 
-            const list = data.data || [];
-
-            // Filter hanya yang borrowed, return_pending, atau returned
-            const returnableBooks = list.filter(
-              (trx) =>
-                trx.status === 'borrowed' ||
-                trx.status === 'return_pending' ||
-                trx.status === 'returned'
-            );
-
-            if (returnableBooks.length === 0) {
-              returnBody.innerHTML = `
-        <tr>
-          <td colspan="6" style="text-align:center">
-            Tidak ada buku yang perlu dikembalikan
-          </td>
-        </tr>
-      `;
-              return;
-            }
-
-            returnBody.innerHTML = returnableBooks
-              .map((trx) => {
-                const fine = calculateFine(trx.due_date);
-                const fineDisplay =
-                  fine > 0
-                    ? `<span class="fine-amount">${formatCurrency(fine)}</span>`
-                    : `<span class="fine-zero">Rp 0</span>`;
-
-                let actionBtn = '';
-                if (trx.status === 'borrowed') {
-                  // Cek denda dari server (fine_amount) atau estimasi frontend
-                  const hasFine = (trx.fine_amount > 0) || (fine > 0);
-                  const finePaid = trx.fine_paid_at ? true : false;
-                  
-                  if (hasFine && !finePaid) {
-                    // Ada denda dan belum dibayar
-                    if (trx.fine_payment_requested_at) {
-                      // Sudah request pembayaran, tunggu approval admin
-                      actionBtn = '<button class="btn-return" disabled>Menunggu Approval Denda</button>';
-                    } else {
-                      // Belum bayar, tampilkan tombol Bayar Denda (orange)
-                      actionBtn = `<button class="btn-pay-fine" onclick="goToPayFine(${trx.id})">💰 Bayar Denda</button>`;
-                    }
-                  } else {
-                    // Tidak ada denda atau sudah dibayar
-                    actionBtn = `<button class="btn-return" onclick="returnBook(${trx.id})">Kembalikan Buku</button>`;
-                  }
-                } else if (trx.status === 'return_pending') {
-                  actionBtn = '<button class="btn-return" disabled>Menunggu Verifikasi</button>';
-                } else if (trx.status === 'returned') {
-                  actionBtn = '<span style="color: #666;">-</span>';
-                }
-
-                return `
-        <tr>
-          <td>${trx.book?.title || '-'}</td>
-          <td>${fmtDate(trx.borrow_date)}</td>
-          <td>${fmtDate(trx.due_date)}</td>
-          <td>${fineDisplay}</td>
-          <td>${getStatusBadge(trx.status)}</td>
-          <td>${actionBtn}</td>
-        </tr>
-      `;
-              })
-              .join('');
-          })
-          .catch(() => {
-            returnBody.innerHTML = `
-      <tr><td colspan="6" style="text-align:center">
-        Tidak bisa terhubung ke backend.
-      </td></tr>
-    `;
-          });
-      }
-
-      // Load data saat halaman dibuka
-      loadReturnData();
-    </script>
-  </body>
 </html>

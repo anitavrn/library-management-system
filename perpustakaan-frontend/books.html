@@ -1,139 +1,278 @@
 <!DOCTYPE html>
 <html lang="id">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Daftar Buku</title>
-    <link rel="stylesheet" href="css/style.css" />
-  </head>
-  <body>
-    <div class="page-wrapper">
-      <div class="card-container">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Daftar Buku</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Outfit', sans-serif !important;
+      background: linear-gradient(135deg, #ffd1e8 0%, #c2e5ff 100%) !important;
+      min-height: 100vh;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding-top: 50px;
+    }
+
+    .main-container {
+      width: 100%;
+      max-width: 900px;
+      padding: 0 20px 40px;
+    }
+
+    .glass-box {
+      background: rgba(255, 255, 255, 0.45);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-radius: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
+      padding: 35px;
+      width: 100%;
+    }
+
+    .page-header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .page-title {
+      font-size: 32px;
+      font-weight: 800;
+      color: #ff6fae;
+      margin: 0;
+    }
+
+    .page-subtitle {
+      color: #64748b;
+      font-size: 15px;
+      margin-top: 8px;
+    }
+
+    /* Search & Limit Box */
+    .controls-wrapper {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 25px;
+      flex-wrap: wrap;
+    }
+
+    .search-input-modern {
+      flex: 1;
+      min-width: 250px;
+      padding: 12px 20px;
+      border-radius: 14px;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      background: rgba(255, 255, 255, 0.6);
+      font-family: 'Outfit', sans-serif;
+      font-size: 15px;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    .search-input-modern:focus {
+      background: #fff;
+      box-shadow: 0 0 0 4px rgba(255, 111, 174, 0.15);
+      border-color: #ff6fae;
+    }
+
+    .limit-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.6);
+      padding: 5px 15px;
+      border-radius: 14px;
+      border: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    select {
+      border: none;
+      background: transparent;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 600;
+      color: #ff6fae;
+      cursor: pointer;
+      outline: none;
+    }
+
+    /* Modern Table Style */
+    .table-container {
+      overflow-x: auto;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    .modern-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: center;
+    }
+
+    .modern-table th {
+      padding: 16px 20px;
+      background: rgba(255, 255, 255, 0.6);
+      color: #ff6fae;
+      font-weight: 700;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 2px solid rgba(255, 111, 174, 0.2);
+    }
+
+    .modern-table td {
+      padding: 18px 20px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+      font-size: 15px;
+      color: #1e293b;
+      vertical-align: middle;
+    }
+
+    .modern-table tbody tr {
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+
+    .modern-table tbody tr:hover {
+      background: rgba(255, 255, 255, 0.5);
+      transform: scale(1.005);
+    }
+
+    .action-row {
+      margin-top: 30px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .btn-back-custom {
+      background: white;
+      color: #ff6fae;
+      border: 2px solid #ff6fae;
+      padding: 12px 30px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 15px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    .btn-back-custom:hover {
+      background: #ff6fae;
+      color: white;
+      box-shadow: 0 8px 20px rgba(255, 111, 174, 0.3);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="main-container">
+    <div class="glass-box">
+      <div class="page-header">
         <h2 class="page-title">Daftar Buku</h2>
+        <p class="page-subtitle">Jelajahi koleksi buku kami yang luas</p>
+      </div>
 
-        <!-- SEARCH -->
-        <input
-          type="text"
-          id="searchInput"
-          placeholder="Cari buku..."
-          class="search-input"
-        />
+      <div class="controls-wrapper">
+        <input type="text" id="searchInput" placeholder="Cari judul buku atau penulis..." class="search-input-modern" />
 
-        <!-- LIMIT DROPDOWN -->
-        <div
-          style="margin: 12px 0; display: flex; gap: 8px; align-items: center"
-        >
-          <label>Jumlah buku:</label>
+        <div class="limit-wrapper">
+          <label style="font-size: 13px; color: #64748b; font-weight: 600;">Tampilkan:</label>
           <select id="limitSelect">
             <option value="10" selected>10</option>
             <option value="25">25</option>
             <option value="50">50</option>
-            <option value="75">75</option>
             <option value="100">100</option>
-            <option value="125">125</option>
-            <option value="150">150</option>
           </select>
         </div>
+      </div>
 
-        <!-- TABLE -->
-        <table class="book-table">
+      <div class="table-container">
+        <table class="modern-table">
           <thead>
             <tr>
-              <th>Judul</th>
+              <th>Judul Buku</th>
               <th>Penulis</th>
             </tr>
           </thead>
           <tbody id="bookList">
             <tr>
-              <td colspan="2" style="text-align: center">Memuat data...</td>
+              <td colspan="2" style="padding: 40px; color: #64748b;">Memuat koleksi buku...</td>
             </tr>
           </tbody>
         </table>
+      </div>
 
-        <!-- BUTTON KEMBALI -->
-        <div style="margin-top: 20px">
-          <button class="btn-back" onclick="location.href='dashboard.html'">
-            ← Kembali ke Dashboard
-          </button>
-        </div>
+      <div class="action-row">
+        <a href="dashboard.html" class="btn-back-custom">
+          <span>←</span> Kembali ke Dashboard
+        </a>
       </div>
     </div>
+  </div>
 
-    <script>
-      const tbody = document.getElementById('bookList');
-      const searchInput = document.getElementById('searchInput');
-      const limitSelect = document.getElementById('limitSelect');
+  <script>
+    const tbody = document.getElementById('bookList');
+    const searchInput = document.getElementById('searchInput');
+    const limitSelect = document.getElementById('limitSelect');
 
-      let currentQuery = 'novel';
+    let currentQuery = 'novel';
 
-      /* =========================
-   LOAD BUKU
-========================= */
-      function loadBooks(query) {
-        const limit = limitSelect.value;
+    function loadBooks(query) {
+      const limit = limitSelect.value;
+      tbody.innerHTML = '<tr><td colspan="2" style="padding: 40px; color: #64748b;">Mencari buku...</td></tr>';
 
-        tbody.innerHTML = `
-    <tr>
-      <td colspan="2" style="text-align:center;">Memuat data...</td>
-    </tr>
-  `;
+      fetch(`https://openlibrary.org/search.json?q=${query}`)
+        .then((res) => res.json())
+        .then((data) => {
+          const books = data.docs.slice(0, limit);
+          tbody.innerHTML = '';
 
-        fetch(`https://openlibrary.org/search.json?q=${query}`)
-          .then((res) => res.json())
-          .then((data) => {
-            const books = data.docs.slice(0, limit);
-            tbody.innerHTML = '';
+          if (books.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="2" style="padding: 60px; color: #64748b;">Buku tidak ditemukan 🔍</td></tr>';
+            return;
+          }
 
-            if (books.length === 0) {
-              tbody.innerHTML = `
-          <tr>
-            <td colspan="2" style="text-align:center;">Buku tidak ditemukan</td>
-          </tr>
-        `;
-              return;
-            }
+          books.forEach((book) => {
+            if (!book.key) return;
+            const workId = book.key.replace('/works/', '');
+            const author = book.author_name?.[0] ?? '-';
 
-            books.forEach((book) => {
-              if (!book.key) return;
-
-              const workId = book.key.replace('/works/', '');
-              const author = book.author_name?.[0] ?? '-';
-
-              tbody.innerHTML += `
-          <tr style="cursor:pointer"
-              onclick="openDetail('${workId}', '${encodeURIComponent(
-                author
-              )}')">
-            <td>${book.title}</td>
-            <td>${author}</td>
-          </tr>
-        `;
-            });
+            const tr = document.createElement('tr');
+            tr.onclick = () => window.location.href = `book-detail.html?id=${workId}&author=${encodeURIComponent(author)}`;
+            tr.innerHTML = `
+              <td style="font-weight: 600; color: #0f172a;">${book.title}</td>
+              <td style="color: #64748b;">${author}</td>
+            `;
+            tbody.appendChild(tr);
           });
-      }
+        })
+        .catch(() => {
+          tbody.innerHTML = '<tr><td colspan="2" style="padding: 40px; color: #ef4444;">Gagal terhubung ke Open Library.</td></tr>';
+        });
+    }
 
-      /* =========================
-   PINDAH KE DETAIL
-========================= */
-      function openDetail(id, author) {
-        window.location.href = `book-detail.html?id=${id}&author=${author}`;
-      }
-
-      /* =========================
-   EVENT
-========================= */
-      searchInput.addEventListener('keyup', function () {
-        if (this.value.length >= 3) {
-          currentQuery = this.value;
-          loadBooks(currentQuery);
-        }
-      });
-
-      limitSelect.addEventListener('change', function () {
+    searchInput.addEventListener('keyup', function () {
+      if (this.value.length >= 3) {
+        currentQuery = this.value;
         loadBooks(currentQuery);
-      });
+      }
+    });
 
-      /* LOAD AWAL */
+    limitSelect.addEventListener('change', function () {
       loadBooks(currentQuery);
-    </script>
-  </body>
+    });
+
+    loadBooks(currentQuery);
+  </script>
+</body>
+
 </html>

@@ -9,7 +9,8 @@ class Transaction extends Model
     protected $fillable = [
         'user_id','book_id','status',
         'borrow_date','due_date','return_date',
-        'approved_by','fine_amount','fine_paid_at','fine_payment_requested_at'
+        'approved_by','fine_amount','fine_paid_at','fine_payment_requested_at',
+        'rejected_reason'
     ];
 
     protected $casts = [
