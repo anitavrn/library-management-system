@@ -68,9 +68,17 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Konfirmasi / approve peminjaman
         Route::put('/transactions/{id}/approve', [TransactionController::class, 'approveBorrow']);
+        Route::put('/transactions/{id}/reject', [TransactionController::class, 'rejectBorrow']);
+        Route::put('/transactions/{id}/undo-reject', [TransactionController::class, 'undoReject']);
+        Route::put('/transactions/{id}/update-reason', [TransactionController::class, 'updateRejectReason']);
+        Route::delete('/transactions/{id}', [TransactionController::class, 'destroy']);
 
         // Lihat daftar transaksi yang sedang dipinjam
         Route::get('/transactions/borrowed', [TransactionController::class, 'borrowed']);
+        Route::get('/transactions/rejected', [TransactionController::class, 'rejected']);
+
+        // Quick Stock
+        Route::put('/books/{id}/quick-stock', [BookController::class, 'quickAddStock']);
 
         // ADMIN: lihat daftar denda (paid / unpaid)
         Route::get('/transactions/fines', [TransactionController::class, 'adminFines']);

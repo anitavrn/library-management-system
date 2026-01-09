@@ -1,131 +1,97 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
   <meta charset="UTF-8">
-  <title>Login</title>
-
-  <link rel="stylesheet" href="css/style.css">
-
-  <!-- SWEET ALERT -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login Member</title>
+  <link rel="stylesheet" href="css/style.css?v=2.0">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-</head>
-<body>
-
-<div class="login-wrapper">
-  <div class="login-card">
-
-    <h2>Login</h2>
-
-    <input
-      type="email"
-      id="email"
-      placeholder="Email"
-      required
-    >
-
-    <input
-      type="password"
-      id="password"
-      placeholder="Password"
-      required
-    >
-
-    <button type="button" onclick="login()">
-      Login
-    </button>
-
-    <p class="login-register-text">
-      Don't have any account?
-      <a href="register.html">Register</a>
-    </p>
-
-  </div>
-</div>
-
-<script>
-/* =========================
-   FRONTEND CONFIG
-========================= */
-const API_URL = "http://127.0.0.1:8000/api";
-
-/* =========================
-   AUTO REDIRECT (ANTI KEDIP)
-========================= */
-const token = localStorage.getItem("token");
-const currentUser = localStorage.getItem("currentUser");
-
-if (token && currentUser) {
-  window.location.replace("dashboard.html");
-}
-
-/* =========================
-   FRONTEND LOGIN FUNCTION
-========================= */
-function login() {
-  const email = document.getElementById("email").value.trim();
-  const password = document.getElementById("password").value.trim();
-
-  if (!email || !password) {
-    Swal.fire({
-      icon: "warning",
-      title: "Form belum lengkap",
-      text: "Email dan password wajib diisi"
-    });
-    return;
-  }
-
-  fetch(`${API_URL}/login`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Accept": "application/json"
-    },
-    body: JSON.stringify({ email, password })
-  })
-  .then(async res => {
-    const data = await res.json();
-    return { status: res.status, data };
-  })
-  .then(({ status, data }) => {
-    if (status !== 200) {
-      Swal.fire({
-        icon: "error",
-        title: "Login gagal",
-        text: data.message || "Email atau password salah"
-      });
-      return;
+  <style>
+    /* Force visibility for debugging */
+    #loginForm {
+      display: block !important;
     }
 
-    localStorage.setItem("token", data.token);
-    localStorage.setItem("currentUser", JSON.stringify(data.user));
+    .login-wrapper {
+      display: flex !important;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #ffd1e8 0%, #c2e5ff 100%);
+    }
+  </style>
+</head>
 
-    Swal.fire({
-      icon: "success",
-      title: "Login berhasil 🎉",
-      confirmButtonText: "Masuk Dashboard"
-    }).then(() => {
-      window.location.href = "dashboard.html";
-    });
-  })
-  .catch(() => {
-    Swal.fire({
-      icon: "error",
-      title: "Server Error",
-      text: "Tidak bisa terhubung ke server"
-    });
-  });
-}
+<body>
 
-/* =========================================================
-   ⚠️ BACKEND CODE (LARAVEL)
-   ⚠️ JANGAN DITARUH DI FILE HTML
-   ⚠️ PINDAHKAN KE: app/Http/Controllers/AuthController.php
-=========================================================
+  <div class="login-wrapper">
+    <div class="login-card" id="loginForm">
+      <h2 style="color: #ff6fae; margin-bottom: 20px; text-align: center;">Login Member</h2>
 
+      <div style="margin-bottom: 15px;">
+        <input type="email" id="email" placeholder="Email"
+          style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
+      </div>
 
+      <div style="margin-bottom: 20px;">
+        <input type="password" id="password" placeholder="Password"
+          style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
+      </div>
 
-========================================================= */
-</script>
+      <button type="button" onclick="login()"
+        style="width: 100%; padding: 12px; background: #ff6fae; color: white; border: none; border-radius: 25px; cursor: pointer; font-weight: bold;">
+        Masuk Dashboard
+      </button>
 
+      <p style="text-align: center; margin-top: 20px; font-size: 14px;">
+        Belum punya akun? <a href="register.html"
+          style="color: #ff6fae; text-decoration: none; font-weight: bold;">Daftar di sini</a>
+      </p>
+
+      <div style="text-align: center; margin-top: 10px;">
+        <a href="admin-login.html" style="font-size: 12px; color: #888;">Login sebagai Admin</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = "http://127.0.0.1:8000/api";
+
+    // AUTO-REDIRECT DIMATIKAN untuk mencegah flickering loop
+    console.log("Login page initialized. Auto-redirect is OFF.");
+
+    function login() {
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value.trim();
+
+      if (!email || !password) {
+        Swal.fire("Peringatan", "Email dan Password harus diisi!", "warning");
+        return;
+      }
+
+      fetch(`${API_URL}/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify({ email, password })
+      })
+        .then(async res => {
+          const data = await res.json();
+          if (res.ok) {
+            localStorage.setItem("token", data.token);
+            localStorage.setItem("currentUser", JSON.stringify(data.user));
+            Swal.fire("Berhasil", "Selamat datang!", "success").then(() => {
+              window.location.href = "dashboard.html";
+            });
+          } else {
+            Swal.fire("Gagal", data.message || "Email/Password salah", "error");
+          }
+        })
+        .catch(err => {
+          Swal.fire("Error", "Gagal terhubung ke server", "error");
+        });
+    }
+  </script>
 </body>
+
 </html>

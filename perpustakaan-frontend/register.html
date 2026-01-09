@@ -6,7 +6,7 @@
 
   <link rel="stylesheet" href="css/style.css">
 
-  <!-- SWEET ALERT -->
+  <!-- SweetAlert -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
@@ -16,12 +16,17 @@
 
     <h2>Register</h2>
 
-    <input type="text" id="fullName" placeholder="Full Name" required>
-    <input type="email" id="email" placeholder="Email" required>
-    <input type="password" id="password" placeholder="Password" required>
-    <input type="password" id="confirmPassword" placeholder="Confirm Password" required>
+    <!-- FORM -->
+    <form id="registerForm" onsubmit="return false;">
 
-    <button type="button" onclick="register()">Register</button>
+      <input type="text" id="fullName" placeholder="Full Name" required>
+      <input type="email" id="email" placeholder="Email" required>
+      <input type="password" id="password" placeholder="Password" required>
+      <input type="password" id="confirmPassword" placeholder="Confirm Password" required>
+
+      <button type="button" onclick="register()">Register</button>
+
+    </form>
 
     <p class="login-register-text">
       Already have an account?
@@ -40,24 +45,18 @@ function register() {
   const password = document.getElementById("password").value.trim();
   const confirmPassword = document.getElementById("confirmPassword").value.trim();
 
+  // VALIDASI FRONTEND
   if (!name || !email || !password || !confirmPassword) {
-    Swal.fire({
-      icon: "warning",
-      title: "Form belum lengkap",
-      text: "Semua field wajib diisi"
-    });
+    Swal.fire("Form belum lengkap", "Semua field wajib diisi", "warning");
     return;
   }
 
   if (password !== confirmPassword) {
-    Swal.fire({
-      icon: "error",
-      title: "Password tidak sama",
-      text: "Password dan konfirmasi password harus sama"
-    });
+    Swal.fire("Password tidak sama", "Password dan konfirmasi harus sama", "error");
     return;
   }
 
+  // REQUEST API
   fetch(`${API_URL}/register`, {
     method: "POST",
     headers: {
@@ -71,32 +70,30 @@ function register() {
       password_confirmation: confirmPassword
     })
   })
-  .then(res => res.json().then(data => ({ status: res.status, data })))
+  .then(async res => {
+    const data = await res.json();
+    return { status: res.status, data };
+  })
   .then(({ status, data }) => {
-    if (status !== 201) {
+    if (status === 201) {
       Swal.fire({
-        icon: "error",
-        title: "Registrasi gagal",
-        text: data.message || "Email sudah terdaftar"
+        icon: "success",
+        title: "Registrasi berhasil 🎉",
+        text: "Silakan login menggunakan akun kamu",
+        confirmButtonText: "Ke Login"
+      }).then(() => {
+        window.location.href = "login.html";
       });
-      return;
+    } else {
+      Swal.fire(
+        "Registrasi gagal",
+        data.message || "Data tidak valid",
+        "error"
+      );
     }
-
-    Swal.fire({
-      icon: "success",
-      title: "Registrasi berhasil 🎉",
-      text: "Silakan login menggunakan akun kamu",
-      confirmButtonText: "Ke Login"
-    }).then(() => {
-      window.location.href = "login.html";
-    });
   })
   .catch(() => {
-    Swal.fire({
-      icon: "error",
-      title: "Server Error",
-      text: "Tidak bisa terhubung ke server"
-    });
+    Swal.fire("Server Error", "Tidak bisa terhubung ke server", "error");
   });
 }
 </script>

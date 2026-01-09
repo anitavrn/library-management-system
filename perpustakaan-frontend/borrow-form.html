@@ -4,6 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Form Peminjaman</title>
+
   <link rel="stylesheet" href="css/style.css">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
@@ -16,19 +17,21 @@
       <h2 class="borrow-title">Form Peminjaman</h2>
 
       <form id="borrowForm">
+
         <label>Judul Buku</label>
         <input type="text" id="bookTitle" readonly>
 
-        <label>Tanggal Pinjam</label>
-        <input type="date" id="borrowDate" required>
+        <label>Tanggal & Jam Pinjam</label>
+        <input type="datetime-local" id="borrowDate" required>
 
-        <label>Tanggal Kembali</label>
-        <input type="date" id="returnDate" required>
+        <label>Tenggat Pengembalian</label>
+        <input type="datetime-local" id="returnDate" required>
 
         <div class="action-row">
           <button type="button" class="btn-back" onclick="history.back()">← Batal</button>
           <button type="submit" class="btn-borrow">📚 Submit</button>
         </div>
+
       </form>
 
     </div>
@@ -38,25 +41,61 @@
     const API_URL = "http://127.0.0.1:8000/api";
     const MEMBER_TOKEN_KEY = "token";
 
-    /* ✅ AUTH CHECK: pakai token (project kamu sekarang sudah pakai Sanctum) */
+    /* ===============================
+       AUTH CHECK
+    ================================ */
     const token = localStorage.getItem(MEMBER_TOKEN_KEY);
     if (!token) {
       window.location.href = "login.html";
     }
 
-    /* ✅ AMBIL DATA BUKU dari localStorage (dari book-detail.html) */
+    /* ===============================
+       AMBIL DATA BUKU
+    ================================ */
     const bookData = JSON.parse(localStorage.getItem("borrowBook"));
     if (!bookData || !bookData.api_book_id || !bookData.title) {
       Swal.fire({
         icon: "error",
         title: "Data tidak ditemukan",
         text: "Silakan pilih buku terlebih dahulu."
-      }).then(() => window.location.href = "books.html");
+      }).then(() => {
+        window.location.href = "books.html";
+      });
     }
 
     document.getElementById("bookTitle").value = bookData.title;
 
-    /* ✅ SUBMIT: sekarang kirim ke backend, popup sama seperti dulu */
+    // Set default borrow date to now (local)
+    function setNow() {
+      const now = new Date();
+      now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+      const nowStr = now.toISOString().slice(0, 16);
+      document.getElementById("borrowDate").value = nowStr;
+
+      // Default return date is 7 days from now
+      const due = new Date();
+      due.setDate(due.getDate() + 7);
+      due.setMinutes(due.getMinutes() - due.getTimezoneOffset());
+      document.getElementById("returnDate").value = due.toISOString().slice(0, 16);
+    }
+    setNow();
+
+    // SMART SYNC: If borrow date/time changes, shift return date to match the time & keep 7 day gap
+    document.getElementById("borrowDate").addEventListener("change", function (e) {
+      const newBorrow = new Date(this.value);
+      if (isNaN(newBorrow)) return;
+
+      const newDue = new Date(newBorrow);
+      newDue.setDate(newDue.getDate() + 7);
+
+      // Handle timezone for toISOString
+      newDue.setMinutes(newDue.getMinutes() - newDue.getTimezoneOffset());
+      document.getElementById("returnDate").value = newDue.toISOString().slice(0, 16);
+    });
+
+    /* ===============================
+       SUBMIT PEMINJAMAN
+    ================================ */
     document.getElementById("borrowForm").addEventListener("submit", function (e) {
       e.preventDefault();
 
@@ -64,20 +103,12 @@
       const returnDate = document.getElementById("returnDate").value;
 
       if (!borrowDate || !returnDate) {
-        Swal.fire({
-          icon: "warning",
-          title: "Form belum lengkap",
-          text: "Tanggal pinjam dan kembali wajib diisi"
-        });
+        Swal.fire("Form belum lengkap", "Tanggal pinjam dan kembali wajib diisi.", "warning");
         return;
       }
 
       if (returnDate < borrowDate) {
-        Swal.fire({
-          icon: "error",
-          title: "Tanggal tidak valid",
-          text: "Tanggal kembali tidak boleh sebelum tanggal pinjam"
-        });
+        Swal.fire("Tanggal tidak valid", "Tanggal kembali tidak boleh sebelum tanggal pinjam.", "error");
         return;
       }
 
@@ -100,48 +131,51 @@
           const data = await res.json();
           return { status: res.status, data };
         })
-        // .then(({ status, data }) => {
-        //   if (status !== 201) {
-        //     Swal.fire({
-        //       icon: "error",
-        //       title: "Gagal meminjam",
-        //       text: data.message || "Request peminjaman gagal."
-        //     });
-        //     return;
-        //   }
         .then(({ status, data }) => {
-          if (status !== 201) {
+          if (status === 201) {
+            localStorage.removeItem("borrowBook");
+
+            let swalConfig = {
+              icon: "success",
+              title: "Permintaan Berhasil",
+              text: data.message,
+              confirmButtonText: "Selesai"
+            };
+
+            // Custom UI for auto-approve vs pending
+            if (data.status_type === 'auto_approved') {
+              swalConfig.title = "Peminjaman Berhasil! 📖";
+              delete swalConfig.text; // Remove sub-text for cleaner look
+            } else if (data.status_type === 'pending_request') {
+              swalConfig.icon = "info";
+              swalConfig.title = "Request Terkirim 📩";
+              swalConfig.text = "Buku ini belum ada di koleksi. Request Anda sedang diproses admin.";
+            }
+
+            Swal.fire(swalConfig).then(() => {
+              window.location.href = "dashboard.html";
+            });
+
+          } else if (status === 400 && data.status_type === 'out_of_stock') {
+            // SCENARIO: STOCK EMPTY (SweetAlert requested by user)
             Swal.fire({
               icon: "warning",
-              title: "Buku tidak tersedia",
-              text: data.message || "Buku belum tersedia atau stok habis."
+              title: "Stok Habis! ⚠️",
+              text: data.message || "Maaf, saat ini buku tersebut sedang tidak tersedia.",
+              confirmButtonText: "Cari Buku Lain"
+            }).then(() => {
+              window.location.href = "books.html";
             });
-            return;
+          } else {
+            Swal.fire(
+              "Gagal Meminjam",
+              data.message || "Terjadi kesalahan pada sistem.",
+              "error"
+            );
           }
-
-
-          // bersihkan cache book yang dipinjam supaya tidak nyangkut
-          localStorage.removeItem("borrowBook");
-
-          Swal.fire({
-            icon: "success",
-            title: "Request peminjaman berhasil 🎉",
-            text: "Menunggu konfirmasi librarian.",
-            confirmButtonText: "OK"
-          }).then(() => {
-            // sesuai yang kamu minta: balik ke dashboard member
-            window.location.href = "dashboard.html";
-
-            // kalau kamu mau ke riwayat transaksi dari backend nanti:
-            // window.location.href = "borrow-history.html";
-          });
         })
         .catch(() => {
-          Swal.fire({
-            icon: "error",
-            title: "Server Error",
-            text: "Tidak bisa terhubung ke backend."
-          });
+          Swal.fire("Server Error", "Tidak bisa terhubung ke backend.", "error");
         });
     });
   </script>
