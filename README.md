@@ -1,6 +1,5 @@
-[db_perpustakaan (1).sql](https://github.com/user-attachments/files/24556984/db_perpustakaan.1.sql)📚 Library App – Sistem Manajemen Perpustakaan Digital
+📚 Library App – Sistem Manajemen Perpustakaan Digital
 
-*Deskripsi Proyek
 Library App adalah aplikasi Sistem Manajemen Perpustakaan Digital yang dikembangkan sebagai Tugas Besar Mata Kuliah Integrasi Aplikasi. Aplikasi ini mengintegrasikan frontend dan backend melalui REST API dengan format data JSON. Backend dibangun menggunakan Laravel dengan autentikasi berbasis token menggunakan Laravel Sanctum, sedangkan frontend dikembangkan menggunakan HTML, CSS, dan JavaScript. Sistem ini menyediakan fitur pengelolaan data buku, peminjaman dan pengembalian buku, serta informasi denda secara terintegrasi dan aman.
 
 *Tujuan
@@ -598,9 +597,7 @@ COMMIT;
 akaan (1).sql…]()
 
 
-
-
-
+[db_perpustakaan (1).sql](https://github.com/user-attachments/files/24556984/db_perpustakaan.1.sql)
 
 
 
